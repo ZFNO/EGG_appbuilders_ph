@@ -1,0 +1,145 @@
+====================================================================
+GITHUB SCRAPER - USAGE NOTES
+====================================================================
+Location: monitor/
+Written for: AppBuilders participant GitHub enrichment
+
+There are TWO scraper scripts. Use the GraphQL one (github_scraper_gql.py).
+The REST one (github_scraper.py) is kept only as a fallback/reference.
+
+--------------------------------------------------------------------
+FILES
+--------------------------------------------------------------------
+  participants_flat.json    INPUT  - flattened participant rows
+                                     (each row needs a "github" URL)
+  participants_github.json  OUTPUT - results, keyed by username
+                                     (auto-created on first run)
+
+--------------------------------------------------------------------
+PRIMARY: github_scraper_gql.py   (USE THIS)
+--------------------------------------------------------------------
+One GraphQL request per user returns the COMPLETE profile:
+  profile fields, followers[], following[], and every repo
+  WITH its commit count (history.totalCount).
+
+Why it's the one to use:
+  - ~1 API call per user instead of ~4 REST + 1-per-repo GraphQL
+  - far fewer calls => much shorter run, much lower rate-limit risk
+  - only needs the `gh` CLI (already installed + authenticated)
+
+Requires: Python 3.11 + `gh` CLI on PATH, logged in (`gh auth status`).
+No pip installs. Standard library only.
+
+COMMANDS (run from this folder):
+
+  # dry run - just list what WOULD be scraped, no API calls
+  python github_scraper_gql.py --dry-run
+
+  # scrape everything not yet saved (main use)
+  python github_scraper_gql.py
+
+  # smoke-test a single user
+  python github_scraper_gql.py --only Syddevv
+
+  # first 5 pending users
+  python github_scraper_gql.py --limit 5
+
+  # force re-scrape users even if already saved
+  python github_scraper_gql.py --refresh
+
+RESUME / INTERRUPTION:
+  - Safe to Ctrl-C any time.
+  - The output file is written after EVERY user.
+  - Re-running skips anyone already in participants_github.json.
+  - So just re-run the same command to pick up where you left off.
+  - Use --refresh only if you want to redo people already saved.
+
+--------------------------------------------------------------------
+OUTPUT SCHEMA - participants_github.json
+--------------------------------------------------------------------
+Top-level object, one key per username (+ special "_" keys):
+
+  {
+    "Syddevv": {
+      "username", "name", "about", "company", "location", "blog",
+      "twitter_username", "hireable" (always null in GraphQL),
+      "created_at", "updated_at", "avatar_url", "html_url",
+
+      "followers": [logins...],  "follower_count": N,
+      "following": [logins...],  "following_count": N,
+
+      "public_repos", "repo_count",
+      "total_stars", "total_forks",
+      "languages": { "Python": 3, ... },
+      "most_recent_push", "account_age_days",
+
+      "repos": [
+        { "reponame", "repo_link", "repo_description",
+          "stars", "commits",        <- commit count
+          "language", "forks_count", "watchers_count",
+          "open_issues_count", "topics": [...], "license",
+          "created_at", "updated_at", "pushed_at",
+          "default_branch", "is_fork", "is_archived", "size" },
+        ...
+      ],
+
+      "participant_index", "participant_name",   <- back-links
+      "_scraped_at"
+    },
+    ...
+    "_failed":  [usernames that errored after all retries],
+    "_missing": [usernames not found on GitHub]
+  }
+
+--------------------------------------------------------------------
+READING THE LIVE OUTPUT
+--------------------------------------------------------------------
+Each user prints a block:
+
+  [00:01:43] +--- [24/1182]  2.0%   ok:23 fail:0   pts:4999   ETA 86m55s
+  [00:01:43] |  user : orvencasido
+  [00:01:43] +--- participant: Orven Casido (row 31)
+  [00:01:54]      OK   'Orven Casido'  repos:12  stars:40  followers:5 ...
+  [00:01:54]         *  some-repo     *3    commits:57
+  [00:01:54]      [saved] participants_github.json
+
+  [i/total]  = progress     ok/fail = running tally
+  pts        = remaining GraphQL points (5,000/hr)
+  ETA        = estimated time remaining
+
+Lines starting with "~" are automatic retries/backoff (normal):
+  ~ transient error, retry in 5s: gh: HTTP 502   <- GitHub server blip
+  ~ rate limit, sleeping Ns                       <- hourly quota hit
+Both are self-healing; no action needed. A 404 => logged to "_missing".
+
+--------------------------------------------------------------------
+RATE LIMITS (what to expect)
+--------------------------------------------------------------------
+  - Authenticated via `gh` token: 5,000 points/hour (core + GraphQL).
+  - The script pauses automatically when points run low and resumes.
+  - A full ~1,180-user run may span multiple quota windows if accounts
+    have many repos/followers. It is designed to just keep going.
+  - Do NOT run two copies at once.
+  - To be gentler, edit these at the top of the script:
+        DELAY_MIN, DELAY_MAX   (jittered seconds between users)
+        POINTS_LOW, POINTS_PAUSE
+
+--------------------------------------------------------------------
+FALLBACK: github_scraper.py   (REST version - not preferred)
+--------------------------------------------------------------------
+Same INPUT/output/resume behavior, same CLI flags, BUT:
+  - makes ~4 REST calls per user + 1 GraphQL call PER REPO
+  - much slower and uses far more quota than the GraphQL version
+  - covers a couple of REST-only fields (e.g. hireable)
+
+Use it only if the GraphQL version is unavailable. Run it the same way:
+  python github_scraper.py [--only USER | --limit N | --refresh | --dry-run]
+
+--------------------------------------------------------------------
+QUICK START
+--------------------------------------------------------------------
+  1. cd Z:\__repo\EGG_appbuildersph\monitor
+  2. python github_scraper_gql.py --only Syddevv     (smoke test)
+  3. python github_scraper_gql.py                    (full run)
+  4. Ctrl-C / close terminal anytime; re-run step 3 to resume.
+====================================================================

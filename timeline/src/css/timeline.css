@@ -1,0 +1,125 @@
+/* =========================================================================
+   Build Log - timeline + graph views
+   ========================================================================= */
+
+.stage{position:relative;margin:0 0 84px;}
+.stage:first-child{margin-top:8px;}
+
+.stage-head{
+  position:relative;z-index:3;display:flex;align-items:center;gap:16px;margin:0 0 34px;
+}
+.stage-head .idx{
+  font-family:"Anton",sans-serif;font-size:34px;line-height:1;color:#000;background:var(--red);
+  padding:8px 16px;transform:skewX(var(--skew));letter-spacing:.02em;
+}
+.stage-head .txt{display:flex;flex-direction:column;gap:4px;}
+.stage-head .name{
+  font-family:"Anton",sans-serif;font-size:28px;letter-spacing:.02em;text-transform:uppercase;
+  transform:skewX(var(--skew));transform-origin:left center;
+}
+.stage-head .meta{font-family:"Oswald",sans-serif;font-weight:700;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--grey);}
+
+/* central trunk */
+.trunk{position:absolute;left:50%;top:0;bottom:0;width:4px;background:linear-gradient(#2a2412,#171308);transform:translateX(-50%);z-index:0;}
+.trunk-fill{position:absolute;left:50%;top:0;width:4px;height:0;background:var(--red);transform:translateX(-50%);box-shadow:0 0 14px rgba(255,212,0,.55);z-index:1;}
+
+.tl-item{
+  position:relative;width:50%;padding:0 54px 0 0;margin:0 0 40px;
+  opacity:0;transform:translateY(46px);transition:opacity .55s ease, transform .55s cubic-bezier(.2,.7,.2,1);
+}
+.tl-item.right{margin-left:50%;padding:0 0 0 54px;}
+.tl-item.in{opacity:1;transform:none;}
+
+/* node */
+.tl-item .node{
+  position:absolute;top:26px;width:20px;height:20px;background:var(--red);border:3px solid #000;
+  transform:rotate(45deg);z-index:4;box-shadow:0 0 0 4px rgba(255,212,0,.15);
+}
+.tl-item.left .node{right:-12px;}
+.tl-item.right .node{left:-12px;}
+.tl-item.in .node{animation:nodePop .5s ease both;}
+@keyframes nodePop{from{transform:rotate(45deg) scale(.2);}to{transform:rotate(45deg) scale(1);}}
+/* branch connector */
+.tl-item::before{
+  content:"";position:absolute;top:35px;height:3px;width:34px;background:var(--red);z-index:2;
+}
+.tl-item.left::before{right:0;}
+.tl-item.right::before{left:0;}
+
+.card{
+  position:relative;background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);
+  padding:20px 20px 18px;text-align:left;transition:.18s;
+}
+.card:hover{transform:translate(-3px,-3px);box-shadow:8px 8px 0 rgba(255,212,0,.28);border-color:var(--red);}
+.card .sha{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--red);letter-spacing:.04em;}
+.card .when{font-family:"Oswald",sans-serif;font-weight:700;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--grey);}
+.card .head{display:flex;flex-wrap:wrap;gap:10px;align-items:baseline;justify-content:space-between;margin-bottom:10px;}
+.card h3{margin:0 0 8px;font-family:"Anton",sans-serif;font-weight:400;font-size:20px;letter-spacing:.02em;line-height:1.15;}
+.card p{margin:0 0 12px;font-size:13.5px;line-height:1.65;color:#c4c4c4;}
+.card .branch{
+  font-family:"JetBrains Mono",monospace;font-size:10px;color:#0b0b0b;background:var(--red);padding:2px 8px;
+  display:inline-block;margin-bottom:10px;
+}
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.tag{
+  font-family:"Oswald",sans-serif;font-weight:700;font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:#cfcbb8;border:1px solid var(--line);padding:3px 8px;transform:skewX(-3deg);
+}
+.card .link{display:inline-block;margin-top:12px;font-family:"Oswald",sans-serif;font-weight:700;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--red);border-bottom:1px solid transparent;}
+.card .link:hover{border-color:var(--red);}
+
+/* images */
+.shots{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+.shots img{
+  width:96px;height:66px;object-fit:cover;border:2px solid var(--line);cursor:pointer;filter:grayscale(.15);
+  transition:.15s;
+}
+.shots img:hover{border-color:var(--red);filter:none;transform:translateY(-2px);}
+
+/* ------------------------------------------------------------- graph view - */
+.graph{
+  background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--red);
+  padding:24px 20px;font-family:"JetBrains Mono",monospace;font-size:12.5px;
+  overflow-x:auto;
+}
+.graph .g-row{display:flex;align-items:center;gap:14px;padding:5px 0;white-space:nowrap;}
+.graph .g-lane{position:relative;min-width:180px;display:flex;align-items:center;gap:8px;color:var(--grey-dk);}
+.graph .g-node{width:11px;height:11px;background:var(--red);border-radius:50%;box-shadow:0 0 8px rgba(255,212,0,.6);flex:0 0 auto;}
+.graph .g-hash{color:var(--red);}
+.graph .g-date{color:var(--grey);}
+.graph .g-msg{color:#e8e4d4;}
+.graph .g-branch{margin-left:auto;color:#000;background:var(--red);padding:1px 7px;font-size:10px;}
+.graph .g-rail{color:#3a3320;}
+
+/* --------------------------------------------------------------- mobile --- */
+@media (max-width:760px){
+  .trunk{left:22px;}
+  .trunk-fill{left:22px;}
+  .tl-item,.tl-item.right{width:100%;margin-left:0;padding:0 0 0 54px;}
+  .tl-item.left .node,.tl-item.right .node{left:12px;right:auto;}
+  .tl-item.left::before,.tl-item.right::before{left:22px;width:32px;right:auto;}
+  .stage-head .idx{font-size:26px;}
+  .stage-head .name{font-size:22px;}
+}
+
+
+/* ---------------------------------------------------------- media blocks - */
+.shots .vid{
+  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:96px;height:66px;border:2px solid var(--line);background:#0a0a0a;text-decoration:none;
+  transition:.15s;overflow:hidden;
+}
+.shots .vid:hover{border-color:var(--red);transform:translateY(-2px);}
+.shots .vid .play{
+  font-size:20px;color:var(--red);line-height:1;text-shadow:0 0 10px rgba(255,212,0,.6);
+}
+.shots .vid .vlabel{
+  font-family:"Oswald",sans-serif;font-weight:700;font-size:8px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--grey);margin-top:5px;max-width:88px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.files{
+  font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--grey);margin:2px 0 10px;
+}
+.files .dstat{margin-left:8px;}
+.files .dstat .add{color:#7fd6a0;font-style:normal;}
+.files .dstat .del{color:#ff5a6e;font-style:normal;}

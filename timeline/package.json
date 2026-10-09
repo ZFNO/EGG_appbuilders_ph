@@ -1,0 +1,17 @@
+{
+  "name": "hackathon-build-log",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Scroll-triggered hackathon build-log timeline for Mark Ong",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "fetch:repo": "node scripts/fetch_repo.mjs",
+    "imgbb": "node scripts/imgbb_upload.mjs"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  }
+}

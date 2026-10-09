@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mark Ong &mdash; Hackathon Build Log</title>
+<meta name="description" content="Scroll-triggered build log of Mark Ong (ZFNO) at the 2026 hackathon.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;700&family=Bebas+Neue&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./src/css/style.css">
+<link rel="stylesheet" href="./src/css/timeline.css">
+</head>
+<body>
+
+<nav class="nav">
+  <div class="brand">BUILD <b>LOG</b></div>
+  <button class="toggle" id="navToggle" aria-label="toggle menu">&#9776;</button>
+  <div class="links" id="navLinks">
+    <a class="link current" href="#top">Timeline</a>
+    <a class="link" href="#stages">Stages</a>
+    <a class="link" href="#repo">Repo</a>
+    <span class="viewtoggle">
+      <button type="button" data-view="timeline" class="vt active" title="Branch timeline">Timeline</button>
+      <button type="button" data-view="graph" class="vt" title="Commit graph">Graph</button>
+    </span>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <h1>Mark Ong<span>2026 Build Log</span></h1>
+  <div class="sub">Hackathon &mdash; <b id="heroCount">0</b> commits logged</div>
+  <p class="lede">A live, scroll-triggered log of everything shipped during the hackathon &mdash; each commit branches off the trunk as it lands.</p>
+</header>
+
+<section class="repo-bar" id="repo">
+  <div class="repo-meta">
+    <span class="repo-k">Repo</span>
+    <a id="repoLink" class="repo-v" href="#" target="_blank" rel="noopener">ZFNO/<span id="repoName">REPO</span></a>
+  </div>
+  <div class="repo-meta">
+    <span class="repo-k">Author</span>
+    <span class="repo-v" id="repoAuthor">Mark Ong</span>
+  </div>
+  <div class="repo-meta">
+    <span class="repo-k">Branch</span>
+    <span class="repo-v" id="repoBranch">main</span>
+  </div>
+  <div class="repo-meta">
+    <span class="repo-k">Last commit</span>
+    <span class="repo-v" id="repoLast">&mdash;</span>
+  </div>
+  <div class="repo-meta">
+    <span class="repo-k">Status</span>
+    <span class="repo-v live"><i class="dot"></i> tracking</span>
+  </div>
+</section>
+
+<main class="wrap">
+
+  <div class="toolbar">
+    <input id="q" class="search" type="search" placeholder="Search commits, tags, messages&hellip;" autocomplete="off">
+    <div class="chips" id="stageChips"></div>
+    <label class="switch">
+      <input type="checkbox" id="imgToggle" checked>
+      <span>Show images</span>
+    </label>
+    <span class="stat" id="stat">loading&hellip;</span>
+  </div>
+
+  <div class="progress" aria-hidden="true"><span id="progressBar"></span></div>
+
+  <div id="timeline" class="timeline-wrap"></div>
+  <div id="graph" class="graph" hidden></div>
+  <div id="empty" class="empty" style="display:none;">No matching commits.</div>
+</main>
+
+<footer>Mark Ong &mdash; <span class="red">ZFNO</span> &mdash; built during the 2026 hackathon &mdash; log generated from <code>public/timeline.json</code></footer>
+
+<div id="lightbox" class="lightbox" aria-hidden="true">
+  <button class="lb-close" id="lbClose">&times;</button>
+  <img id="lbImg" alt="">
+  <div class="lb-cap" id="lbCap"></div>
+</div>
+
+<script type="module" src="./src/js/main.js"></script>
+</body>
+</html>

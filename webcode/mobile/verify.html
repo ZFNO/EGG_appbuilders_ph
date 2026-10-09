@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>WASM gate verify</title>
+  <style>body{font:13px/1.4 monospace;background:#111;color:#0f0;margin:0;padding:12px}pre{white-space:pre-wrap}</style>
+</head>
+<body>
+  <pre id="out">booting...</pre>
+  <script type="module">
+    import { runGateCheck } from './src/extract.js';
+    const log = (m) => { document.getElementById('out').textContent = m; };
+    window.__RESULT__ = null;
+    window.__STATUS__ = 'starting';
+    const params = new URLSearchParams(location.search);
+    const limit = params.has('n') ? Number(params.get('n')) : undefined;
+    (async () => {
+      try {
+        window.__STATUS__ = 'running';
+        log('loading model + running gate check (this runs the WASM backend)...');
+        const metrics = await runGateCheck({ limit, onProgress: (p) => log('item ' + p.idx + '/' + p.total + ' ...') });
+        window.__RESULT__ = { ok: true, metrics };
+        window.__STATUS__ = 'done';
+        log(JSON.stringify(metrics, null, 2));
+      } catch (e) {
+        window.__RESULT__ = { ok: false, error: String((e && e.stack) || e) };
+        window.__STATUS__ = 'error';
+        log(String((e && e.stack) || e));
+      }
+    })();
+  </script>
+</body>
+</html>

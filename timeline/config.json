@@ -1,0 +1,17 @@
+{
+  "author": "Mark Ong",
+  "event": "EGG AppBuilders PH 2026",
+  "github": {
+    "user": "ZFNO",
+    "repo": "EGG_appbuilders_ph",
+    "branch": "main"
+  },
+  "timezone": "Asia/Manila",
+  "poll_seconds": 600,
+  "media_dir": "media dump",
+  "data_file": "public/timeline.json",
+  "state_file": "data/state.json",
+  "drive_folder": "https://drive.google.com/drive/folders/1dI1ixawompk3wwe4S5GY1D_FTMGJQITN",
+  "drive_public": true,
+  "imgbb_env": "IMGBB_API_KEY"
+}

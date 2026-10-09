@@ -1,0 +1,86 @@
+# ============================================================
+# Root .gitignore - applies recursively to ALL nested folders
+# ============================================================
+
+# ---- OS / editor junk ----
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# ---- env / secrets ----
+.env
+.env.*
+!.env.example
+!.env.*.example
+credentials.json
+token.json
+.cred_expiry.json
+*.pem
+*.key
+service-account*.json
+
+# ---- python ----
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# ---- node / js tooling ----
+node_modules/
+.pnp
+.pnp.js
+.npm/
+.vite/
+dist/
+dist-ssr/
+build/
+*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---- android build output ----
+.gradle/
+.cxx/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# ---- raw media / big blobs ----
+**/media dump/*
+!**/media dump/.gitkeep
+*.mp3
+*.mp4
+*.wav
+*.mov
+*.mkv
+*.flac
+
+# ---- machine-local sync state ----
+data/state.json
+
+# ---- logs ----
+*.log
+
+# ---- ml model weights / downloaded blobs ----
+*.onnx
+*.safetensors
+*.gguf
+*.bin

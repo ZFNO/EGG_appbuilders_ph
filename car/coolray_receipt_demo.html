@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1024, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Coolray Receipt Demo</title>
+<style>
+html,body{margin:0;padding:0;background:#0d1117;color:#e6edf3;font-family:Arial,Helvetica,sans-serif;font-size:18px;-webkit-text-size-adjust:100%}
+#app{padding:12px}
+h1{font-size:24px;margin:0 0 4px 0}
+.hint{font-size:14px;color:#8b949e;margin-bottom:8px}
+.col{display:inline-block;vertical-align:top;box-sizing:border-box}
+.left{width:46%;padding-right:10px}
+.right{width:52%}
+textarea{width:100%;height:200px;box-sizing:border-box;background:#161b22;color:#e6edf3;border:2px solid #30363d;border-radius:8px;font-size:18px;padding:10px}
+.row{margin-top:10px}
+button,input{font-family:inherit}
+.big{min-height:64px;font-size:20px;border-radius:10px;border:2px solid #30363d;background:#21262d;color:#e6edf3;padding:0 18px;margin-right:8px}
+.primary{background:#238636;border-color:#238636;color:#fff;font-weight:bold}
+.card{background:#161b22;border:2px solid #30363d;border-radius:10px;padding:10px;margin-bottom:10px}
+.lbl{font-size:14px;color:#8b949e;margin-bottom:6px}
+.val{font-size:20px;line-height:1.4;word-wrap:break-word}
+.wallet{display:inline-block;min-width:46%;min-height:88px;box-sizing:border-box;background:#21262d;border:3px solid #30363d;border-radius:10px;padding:10px;font-size:18px;margin-right:8px;vertical-align:top}
+.wallet.on{border-color:#238636;background:#12261a}
+.bal{font-size:26px;font-weight:bold}
+input[type=text]{min-height:64px;width:120px;box-sizing:border-box;background:#0d1117;color:#e6edf3;border:2px solid #30363d;border-radius:8px;font-size:22px;padding:0 10px;text-align:right;vertical-align:top;margin-right:8px}
+.mono{font-family:"Courier New",Courier,monospace;font-size:16px}
+.warn{color:#f85149}
+.log{max-height:150px;overflow-y:auto}
+.logline{font-family:"Courier New",Courier,monospace;font-size:14px;border-bottom:1px solid #21262d;padding:3px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="col left">
+    <h1>Coolray Receipt Demo</h1>
+    <div class="hint">Offline companion UI &bull; sensor-only head unit &bull; no network, no WASM, no chain</div>
+    <textarea id="raw" spellcheck="false" placeholder="e.g.&#10;SM SUPERMART CEBU&#10;01/05/2024&#10;TOTAL PHP 1,234.50"></textarea>
+    <div class="row">
+      <button id="btnParse" class="big primary">PARSE + LOG</button>
+      <button id="btnSample" class="big">SAMPLE</button>
+      <button id="btnClear" class="big">CLEAR</button>
+    </div>
+    <div class="row hint" id="msg">Ready.</div>
+  </div>
+  <div class="col right">
+    <div class="card">
+      <div class="lbl">Last parsed row (hash / append-log only)</div>
+      <div class="val" id="rowOut">&mdash;</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Allowance wallets (mock &bull; tap to select payer)</div>
+      <div class="row">
+        <div id="wGcash" class="wallet on">GCash<br><span class="bal" id="bGcash">0.00</span></div>
+        <div id="wMaya" class="wallet">Maya<br><span class="bal" id="bMaya">0.00</span></div>
+      </div>
+      <div class="row">
+        <input id="topup" type="text" inputmode="numeric" value="1500">
+        <button id="btnTopup" class="big">TOP-UP</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="lbl">Generated receipt line</div>
+      <div class="val mono" id="receiptOut">&mdash;</div>
+    </div>
+    <div class="card">
+      <div class="lbl">Append log (in-memory, hashed &bull; no on-chain)</div>
+      <div class="log" id="logOut"><div class="logline">(empty)</div></div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var MON = { jan:1, feb:2, mar:3, apr:4, may:5, jun:6, jul:7, aug:8, sep:9, oct:10, nov:11, dec:12 };
+  var wallet = 'GCash';
+  var bal = { GCash: 0, Maya: 0 };
+  var log = [];
+
+  /* djb2 32-bit hash -> 8 hex chars (ES5, no WASM, no crypto) */
+  function hash32(str) {
+    var h = 5381, i;
+    for (i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) | 0; }
+    var out = (h >>> 0).toString(16);
+    while (out.length < 8) out = '0' + out;
+    return out;
+  }
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { n = parseInt(n, 10); return (n < 10 ? '0' : '') + n; }
+  function cleanNum(s) { return parseFloat(String(s).replace(/,/g, '')); }
+  function money(n) {
+    var neg = n < 0, x = Math.abs(Math.round(n * 100));
+    var cents = x % 100, peso = (x - cents) / 100;
+    var s = String(peso), out = '', c = 0, i;
+    for (i = s.length - 1; i >= 0; i--) { out = s.charAt(i) + out; c++; if (c % 3 === 0 && i > 0) out = ',' + out; }
+    return (neg ? '-' : '') + out + '.' + pad(cents);
+  }
+  function today() {
+    var d = new Date();
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  }
+  function findAmount(text) {
+    var m, best = null, i, list = [];
+    var moneyRe = /\b(?:php|p|\u20b1|\$)\s*([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]{1,2})?|[0-9]+(?:\.[0-9]{1,2})?)/gi;
+    while ((m = moneyRe.exec(text)) !== null) { list.push(cleanNum(m[1])); }
+    if (!list.length) {
+      var numRe = /\b([0-9]{1,3}(?:,[0-9]{3})+\.[0-9]{1,2}|[0-9]+\.[0-9]{2})\b/g;
+      while ((m = numRe.exec(text)) !== null) { list.push(cleanNum(m[1])); }
+    }
+    for (i = 0; i < list.length; i++) { if (!isNaN(list[i]) && (best === null || list[i] > best)) best = list[i]; }
+    return best;
+  }
+  function findDate(text) {
+    var m = /(\d{4})-(\d{1,2})-(\d{1,2})/.exec(text);
+    if (m) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+    m = /\b(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})\b/.exec(text);
+    if (m) {
+      var a = parseInt(m[1], 10), b = parseInt(m[2], 10), y = parseInt(m[3], 10), d, mo;
+      if (y < 100) y += 2000;
+      if (a > 12 && b <= 12) { d = a; mo = b; } else { mo = a; d = b; }
+      if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) return y + '-' + pad(mo) + '-' + pad(d);
+    }
+    m = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s*(\d{2,4})?/i.exec(text);
+    if (!m) m = /\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s*(\d{2,4})?/i.exec(text);
+    if (m) {
+      var mon, day, yr;
+      if (MON[String(m[1]).toLowerCase().substring(0, 3)]) { mon = MON[String(m[1]).toLowerCase().substring(0, 3)]; day = parseInt(m[2], 10); yr = m[3]; }
+      else { mon = MON[String(m[2]).toLowerCase().substring(0, 3)]; day = parseInt(m[1], 10); yr = m[3]; }
+      yr = yr ? parseInt(yr, 10) : new Date().getFullYear();
+      if (yr < 100) yr += 2000;
+      return yr + '-' + pad(mon) + '-' + pad(day);
+    }
+    return today();
+  }
+  function findName(text) {
+    var lines = String(text).replace(/\r/g, '').split('\n'), i, ln, t;
+    for (i = 0; i < lines.length; i++) {
+      ln = lines[i].replace(/^\s+|\s+$/g, '');
+      if (!ln) continue;
+      if (!/[A-Za-z]/.test(ln)) continue;
+      if (/^(total|amount|subtotal|cash|change|vat|date|time|or no|receipt|tin)\b/i.test(ln)) continue;
+      t = ln.replace(/^(name|merchant|store|from|payee|bill to)\s*[:\-]\s*/i, '');
+      t = t.replace(/\s{2,}/g, ' ');
+      if (t.length > 40) t = t.substring(0, 40);
+      return t;
+    }
+    return 'UNKNOWN';
+  }
+  function updateBal() {
+    $('bGcash').innerHTML = money(bal.GCash);
+    $('bMaya').innerHTML = money(bal.Maya);
+  }
+  function setPay(w) {
+    wallet = w;
+    $('wGcash').className = 'wallet' + (w === 'GCash' ? ' on' : '');
+    $('wMaya').className = 'wallet' + (w === 'Maya' ? ' on' : '');
+  }
+  function renderLog() {
+    var i, html = '';
+    if (!log.length) { $('logOut').innerHTML = '<div class="logline">(empty)</div>'; return; }
+    for (i = log.length - 1; i >= 0; i--) {
+      html += '<div class="logline">#' + log[i].n + ' ' + log[i].hash + ' ' + log[i].line + '</div>';
+    }
+    $('logOut').innerHTML = html;
+  }
+  function doParse() {
+    var text = $('raw').value;
+    if (!text.replace(/\s/g, '').length) { $('msg').className = 'row hint warn'; $('msg').innerHTML = 'Nothing to parse.'; return; }
+    var amt = findAmount(text);
+    var row = { name: findName(text), amount: amt, date: findDate(text) };
+    if (amt === null) {
+      $('rowOut').innerHTML = 'name: ' + row.name + '<br>amount: <span class="warn">not found</span><br>date: ' + row.date;
+      $('msg').className = 'row hint warn';
+      $('msg').innerHTML = 'No amount detected - nothing logged.';
+      return;
+    }
+    bal[wallet] = bal[wallet] - amt;
+    updateBal();
+    var line = row.date + '  ' + row.name.toUpperCase() + '  PHP ' + money(row.amount) + '  [' + wallet + ': PHP ' + money(bal[wallet]) + ']';
+    var h = hash32(line);
+    log.push({ n: log.length + 1, hash: h, line: line });
+    renderLog();
+    $('rowOut').innerHTML = 'name: <b>' + row.name + '</b><br>amount: <b>PHP ' + money(row.amount) + '</b><br>date: ' + row.date + '<br>hash: ' + h;
+    $('receiptOut').innerHTML = line;
+    $('msg').className = 'row hint';
+    $('msg').innerHTML = 'Logged (append-log, hash only). Charged to ' + wallet + '.';
+  }
+  function doTopup() {
+    var v = cleanNum($('topup').value);
+    if (isNaN(v) || v <= 0) { $('msg').className = 'row hint warn'; $('msg').innerHTML = 'Enter a valid top-up amount.'; return; }
+    bal[wallet] = bal[wallet] + v;
+    updateBal();
+    $('msg').className = 'row hint';
+    $('msg').innerHTML = 'Topped up ' + wallet + ' by PHP ' + money(v) + ' (mock).';
+  }
+  $('btnParse').onclick = doParse;
+  $('btnTopup').onclick = doTopup;
+  $('btnClear').onclick = function () { $('raw').value = ''; $('msg').className = 'row hint'; $('msg').innerHTML = 'Cleared.'; };
+  $('btnSample').onclick = function () {
+    $('raw').value = 'SM SUPERMART CEBU\nOR No. 0042199\n01/05/2024  13:42\nRice 5kg   480.00\nEggs 1 tray 265.50\nTOTAL PHP 745.50';
+    $('msg').className = 'row hint'; $('msg').innerHTML = 'Sample pasted - tap PARSE + LOG.';
+  };
+  $('wGcash').onclick = function () { setPay('GCash'); };
+  $('wMaya').onclick = function () { setPay('Maya'); };
+  setPay('GCash');
+  updateBal();
+  renderLog();
+})();
+</script>
+</body>
+</html>
