@@ -111,3 +111,16 @@ None. Commit is local; say the word to push `feature/web-local-port`.
 - Verified: serve.mjs `200` for `/`, `/routes`, `/routes.html`, `/nav.js`,
   `/guide`; direct `/api/scope` -> `501` (shim is in-page, as documented);
   `node --test` still `7/7 pass`. Routes: see http://127.0.0.1:8080/routes
+
+## Follow-up - Vite dev server (DONE)
+- Added `webcode/web/local/package.json` (`bun run dev` -> `vite`), `vite.config.js`
+  (root = this folder, MPA entries for the 4 pages, `friendlyRoutes` middleware
+  mapping `/`|`/guide`|`/scope`|`/routes` -> the `.html`, `appType: "mpa"` so unknown
+  paths 404), `.gitignore` (node_modules/dist/.vite), and a `bun.lock`.
+- `bun install` then `bun run dev` -> http://localhost:8080/ with HMR; `bun run build`
+  emits `dist/`. `serve.mjs` still works with no install for a plain static serve.
+- Live-verified in the browser: `/`and `/routes` render, navbar shows the 4 links with
+  the current page highlighted, and the in-page shim answers `POST /api/route`
+  (`#4471` -> awaiting_approval; "pay the invoice now" -> rejected).
+- Server-side `GET /api/scope` -> 404 at Vite, as expected: the fetch shim intercepts
+  `/api/*` inside the page, so nothing under `/api/` ever reaches the dev server.

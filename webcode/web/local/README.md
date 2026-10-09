@@ -6,13 +6,31 @@ modules mirror the Python files one-for-one.
 
 ## Run
 
-```bash
-# smoke test (the acceptance gate)
-node --test webcode/web/local/tests/smoke.mjs
+### Dev server (Vite, hot reload)
 
-# serve the static app, then open the printed URL
+```bash
+cd webcode/web/local
+bun install          # once
+bun run dev          # -> http://localhost:8080/  (HMR on)
+```
+
+Edit any `.js` / `.css` / `.html` and the page updates live. `vite.config.js`
+sets the root to this folder, lists the four pages as MPA entry points, and adds
+a small `friendlyRoutes` middleware so `/`, `/guide`, `/scope` and `/routes` work
+in dev just like `serve.mjs` (`appType: "mpa"` keeps unknown paths a real 404
+rather than silently serving `index.html`). `bun run build` emits `dist/`.
+
+### Zero-dependency static server (no build step)
+
+```bash
 node webcode/web/local/serve.mjs          # -> http://127.0.0.1:8080/
 # optional: node webcode/web/local/serve.mjs 8081
+```
+
+### Tests
+
+```bash
+node --test webcode/web/local/tests/smoke.mjs   # the acceptance gate
 ```
 
 Then open the URL and use the example chips on the dashboard. Pages:
