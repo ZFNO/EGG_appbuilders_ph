@@ -165,3 +165,20 @@
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
   .card .n{font-size:22px;font-weight:700}
   .card .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+
+/* ===== shared top nav bar + routes page (added) ===== */
+.navbar{display:flex;gap:4px;flex-wrap:wrap;margin-left:14px}
+.navbar a{font-size:13px;color:var(--mut);text-decoration:none;padding:5px 11px;border-radius:8px;
+  border:1px solid transparent;white-space:nowrap}
+.navbar a:hover{color:var(--fg);border-color:var(--line);background:#12151b}
+.navbar a.active{color:var(--info);background:#0c0e12;border-color:var(--line);font-weight:600}
+.wrap section.full{grid-column:1/3}
+.routes{display:grid;gap:8px}
+.route{display:grid;grid-template-columns:64px 1fr 1.15fr;gap:10px;align-items:baseline;
+  border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#12151b}
+.route .m{font-weight:700;font-size:11.5px;letter-spacing:.04em;color:var(--mut)}
+.route .m.GET{color:var(--ok)} .route .m.POST{color:var(--warn)}
+.route code{color:var(--info);background:#0c0e12;padding:1px 6px;border-radius:5px;font-size:12.5px}
+.route .d{color:var(--mut);font-size:12.5px}
+.route .d b{color:var(--fg)}
+@media(max-width:760px){.route{grid-template-columns:1fr}}

@@ -10,7 +10,7 @@
 <header>
   <h1>Invisible Secretary</h1>
   <span class="muted">element guide - described in place</span>
-  <a class="nav" href="index.html">&larr; dashboard</a><a class="nav" href="scope.html">scope</a>
+  <nav class="navbar" id="navbar" data-page="guide"></nav>
   <span class="pill" id="runtime">runtime: local · mock services: SIMULATED</span>
 </header>
 <div class="wrap">
@@ -74,6 +74,7 @@
 
 <script type="module">
 import "./api.js";
+import "./nav.js";
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? "").toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 

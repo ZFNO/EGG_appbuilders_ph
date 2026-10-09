@@ -31,6 +31,8 @@ const ROUTES = {
   "/guide.html": "guide.html",
   "/scope": "scope.html",
   "/scope.html": "scope.html",
+  "/routes": "routes.html",
+  "/routes.html": "routes.html",
 };
 
 function resolvePath(urlPath) {

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invisible Secretary &middot; Routes</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <h1>Invisible Secretary &middot; Routes</h1>
+  <nav class="navbar" id="navbar" data-page="routes"></nav>
+  <span class="pill" id="runtime">no backend &middot; fetch shim intercepts /api/*</span>
+</header>
+
+<div class="wrap">
+  <section class="full">
+    <h2>Static file routes &mdash; served by <code>serve.mjs</code></h2>
+    <p class="note">The app ships with <b>no backend</b>. <code>serve.mjs</code> only serves these files;
+      the friendly paths (<code>/</code>, <code>/guide</code>, <code>/scope</code>, <code>/routes</code>)
+      map onto the matching <code>.html</code>. Everything else is served from disk; a missing file is
+      <b>404</b>, and any <code>/api/*</code> that reaches the server (the shim should have caught it)
+      is <b>501</b>.</p>
+    <div class="routes" id="staticRoutes"></div>
+  </section>
+
+  <section class="full">
+    <h2>API routes &mdash; in-browser fetch shim (never hits the network)</h2>
+    <p class="note">These mirror the FastAPI routes in <code>server.py</code>. They are handled inside the
+      page by <code>api.js</code>, which intercepts <code>fetch("/api/...")</code> and runs the request
+      against the in-browser engine. Bodies and query params are parsed the same way.</p>
+    <div class="routes" id="apiRoutes"></div>
+  </section>
+</div>
+
+<script type="module">
+import "./nav.js";
+
+const STATIC = [
+  { m: "GET", p: "/",            d: "<b>Dashboard</b> &mdash; the main UI (index.html)" },
+  { m: "GET", p: "/index.html",  d: "Dashboard, same as <code>/</code>" },
+  { m: "GET", p: "/guide, /guide.html",   d: "Element guide page (<b>guide.html</b>)" },
+  { m: "GET", p: "/scope, /scope.html",   d: "Scope config page (<b>scope.html</b>)" },
+  { m: "GET", p: "/routes, /routes.html", d: "This page (<b>routes.html</b>)" },
+  { m: "GET", p: "/assets/app.css", d: "Shared stylesheet" },
+  { m: "GET", p: "/&lt;any file&gt;", d: "Any existing file under <code>webcode/web/local/</code>" },
+  { m: "GET", p: "/api/*", d: "501 &mdash; server refusing; means the shim was not loaded" },
+];
+
+const API = [
+  { m: "GET",  p: "/api/scope",   d: "Scope config overview &rarr; <b>200</b> <code>scopeStore.overview()</code>" },
+  { m: "POST", p: "/api/scope",   d: "Body <code>{ out_of_scope_keywords: [] }</code> &rarr; <b>200</b> saved; <b>400</b> if not a list" },
+  { m: "POST", p: "/api/preview", d: "Body <code>{ text }</code> &rarr; <b>200</b> dry-run classification, no state change" },
+  { m: "GET",  p: "/api/model",   d: "&rarr; <b>200</b> adapter descriptor (rules-only in the browser)" },
+  { m: "POST", p: "/api/route",   d: "Body <code>{ text, request_id? }</code>, <code>?mode=sync|async</code> &rarr; <b>200</b> decision (sync) or <code>{ job_id, state:&quot;accepted&quot; }</code> (async); <b>500</b> on error; <b>503</b> if the queue is saturated" },
+  { m: "POST", p: "/api/approvals/{id}/approve", d: "Body <code>{ payload? }</code> &rarr; <b>200</b> result; <b>404</b> <code>unknown_approval</code>; <b>409</b> on payload mismatch" },
+  { m: "POST", p: "/api/approvals/{id}/reject",  d: "&rarr; <b>200</b> result; <b>404</b> / <b>409</b> as above" },
+  { m: "GET",  p: "/api/activity", d: "&rarr; <b>200</b> list of handled events (dashboard feed)" },
+  { m: "GET",  p: "/api/nodes",    d: "&rarr; <b>200</b> node registry health (allow-listed capabilities)" },
+  { m: "GET",  p: "/api/jobs/{id}", d: "&rarr; <b>200</b> event for an async job id; <b>404</b> <code>unknown job</code>" },
+  { m: "*",    p: "/api/&lt;other&gt;", d: "<b>404</b> <code>not_found</code>" },
+];
+
+function render(list, el) {
+  for (const r of list) {
+    const row = document.createElement("div");
+    row.className = "route";
+    const m = document.createElement("span");
+    m.className = "m " + (r.m === "*" ? "" : r.m);
+    m.textContent = r.m;
+    const p = document.createElement("code");
+    p.innerHTML = r.p;
+    const d = document.createElement("span");
+    d.className = "d";
+    d.innerHTML = r.d;
+    row.append(m, p, d);
+    el.appendChild(row);
+  }
+}
+render(STATIC, document.getElementById("staticRoutes"));
+render(API, document.getElementById("apiRoutes"));
+</script>
+</body>
+</html>

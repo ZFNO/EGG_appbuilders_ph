@@ -9,8 +9,7 @@
 <body>
 <header>
   <h1>Invisible Secretary &middot; Scope</h1>
-  <a class="nav" href="index.html">&larr; dashboard</a>
-  <a class="nav" href="guide.html">element guide &rarr;</a>
+  <nav class="navbar" id="navbar" data-page="scope"></nav>
   <span class="pill" id="runtime">scope: live &middot; edits persist to data/scope.json</span>
 </header>
 
@@ -56,6 +55,7 @@
 
 <script type="module">
 import "./api.js";
+import "./nav.js";
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? "").toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 let STATE = { oos: [], dirty: false };

@@ -96,3 +96,18 @@ node webcode/web/local/serve.mjs                   # -> http://127.0.0.1:8080/
 
 ## Blockers
 None. Commit is local; say the word to push `feature/web-local-port`.
+
+## Follow-up — shared nav bar + Routes page (DONE, same branch)
+- `webcode/web/local/nav.js` — shared top nav, injected into each page's
+  `<nav class="navbar" id="navbar" data-page="...">` placeholder and highlights
+  the current page. Pages: Dashboard, Element guide, Scope, Routes.
+- `webcode/web/local/routes.html` — a styled page listing the static file routes
+  (serve.mjs) and the API routes (the in-browser fetch shim), with status codes.
+- Each page header's ad-hoc `<a class="nav">` links were replaced by the navbar
+  placeholder; each page's module script now also `import "./nav.js";`.
+- `serve.mjs` maps `/routes` and `/routes.html` -> `routes.html`.
+- `assets/app.css` gained `.navbar` + `.route` styles and `.wrap section.full`
+  (full-width section). (Styling agent still owns this file.)
+- Verified: serve.mjs `200` for `/`, `/routes`, `/routes.html`, `/nav.js`,
+  `/guide`; direct `/api/scope` -> `501` (shim is in-page, as documented);
+  `node --test` still `7/7 pass`. Routes: see http://127.0.0.1:8080/routes
