@@ -18,6 +18,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
+from . import scope_store
 from .bus import Bus, Message
 from .pipeline import Context
 from .runtime import build_runtime, start_workers
@@ -98,6 +99,26 @@ def create_app(bus: Bus, ctx: Context, engine, *, workers: int = 1) -> FastAPI:
     @app.get("/guide", response_class=HTMLResponse)
     async def guide():
         return (HERE / "guide.html").read_text(encoding="utf-8")
+
+    @app.get("/scope", response_class=HTMLResponse)
+    async def scope_page():
+        return (HERE / "scope.html").read_text(encoding="utf-8")
+
+    @app.get("/api/scope")
+    async def scope_get():
+        return scope_store.overview()
+
+    @app.post("/api/scope")
+    async def scope_set(body: dict | None = None):
+        kws = (body or {}).get("out_of_scope_keywords", [])
+        if not isinstance(kws, list):
+            raise HTTPException(status_code=400,
+                                detail="out_of_scope_keywords must be a list")
+        return scope_store.save(kws)
+
+    @app.post("/api/preview")
+    async def preview(body: dict | None = None):
+        return engine.preview((body or {}).get("text", ""))
 
     @app.get("/api/model")
     async def model_info():

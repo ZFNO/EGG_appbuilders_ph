@@ -68,3 +68,10 @@ None.
 
 ## Repo working-tree note (pre-existing, NOT from this fix)
 `git status` also shows unrelated pre-existing changes I did NOT touch: modified `invisible_secretary/__init__.py`, deleted `invisible_secretary/tests/test_api.py` and several `meeting notes/*.md`, plus untracked `job_board/`, `resources/`, etc. Only `invisible_secretary/pipeline.py`, `invisible_secretary/tests/test_bus.py`, `temp/throwaway_scripts/_repro.py` and `notes/fixer_agent/STATUS.md` were written by this fix.
+
+----
+## Commit & push — 2026-10-10
+- Commit 3480dd1 on branch secretary: "async remodel of invisible_secretary + bulletproof bus worker" (50 files, +1999/-505).
+- Pushed to origin: b25bcbe..3480dd1  secretary -> secretary  (https://github.com/ZFNO/EGG_appbuilders_ph.git).
+- Includes the pipeline worker fix + updated test_bus.py + this STATUS.md.
+- Left untracked/uncommitted: temp/ (throwaway) and invisible_secretary/scope_store.py (appeared after staging).

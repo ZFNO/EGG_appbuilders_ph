@@ -12,6 +12,7 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from . import scope_store
 from .engine import Engine
 from .factory import default_adapter
 
@@ -53,10 +54,21 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, [e.to_dict() for e in ENGINE.events.values()])
         if self.path == "/api/nodes":
             return self._send(200, [n.health() for n in ENGINE.nodes.values()])
+        if self.path == "/scope":
+            return self._send(200, (HERE / "scope.html").read_bytes(), "text/html")
+        if self.path == "/api/scope":
+            return self._send(200, scope_store.overview())
         return self._send(404, {"error": "not_found"})
 
     def do_POST(self):
         body = self._json_body()
+        if self.path == "/api/scope":
+            kws = body.get("out_of_scope_keywords", [])
+            if not isinstance(kws, list):
+                return self._send(400, {"error": "out_of_scope_keywords must be a list"})
+            return self._send(200, scope_store.save(kws))
+        if self.path == "/api/preview":
+            return self._send(200, ENGINE.preview(body.get("text", "")))
         if self.path == "/api/route":
             rid = body.get("request_id") or f"req_{uuid.uuid4().hex[:8]}"
             text = body.get("text", "")

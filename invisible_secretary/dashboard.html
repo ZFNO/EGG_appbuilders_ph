@@ -63,7 +63,7 @@
 <header>
   <h1>Invisible Secretary</h1>
   <span class="muted">local-first decision layer</span>
-  <a class="nav" href="/guide">element guide &rarr;</a>
+  <a class="nav" href="/guide">element guide &rarr;</a><a class="nav" href="/scope">scope</a>
   <span class="pill" id="runtime">runtime: local · mock services: SIMULATED</span>
 </header>
 <div class="wrap">
@@ -94,7 +94,7 @@
       <div>&bull; party &mdash; a <b>Capitalized name</b> right after <code>with</code> / <code>to</code> / <code>for</code>, e.g. <i>with&nbsp;Acme</i></div>
       <div>&bull; deadline &mdash; a date written as <code>YYYY-MM-DD</code>, e.g. <i>2026-10-12</i></div>
       <div>&bull; everything else is free text &mdash; keep it to a <b>single ask</b> per message</div>
-      <div class="no">&times; won't do on purpose: pay / purchase / delete / refund / legal / hiring &mdash; these come back <b>rejected</b>.</div>
+      <div class="no" id="noList">&times; won't do on purpose: pay / purchase / delete / refund / legal / hiring &mdash; these come back <b>rejected</b>. <a class="nav" style="margin:0" href="/scope">edit scope &rarr;</a></div>
       <div>Unclear or too vague? It asks you to <b>clarify</b> rather than guess. Free-text only &mdash; there is no fixed command syntax.</div>
     </div>
   </section>
@@ -102,6 +102,11 @@
   <section>
     <h2>Services / nodes</h2>
     <div id="nodes"></div>
+  </section>
+
+  <section style="grid-column:1/3">
+    <h2>Scope &mdash; what it handles / what it refuses <a class="nav" href="/scope">edit / view all &rarr;</a></h2>
+    <div id="scope" class="muted">loading&hellip;</div>
   </section>
 
   <section style="grid-column:1/3">
@@ -130,7 +135,9 @@ const ACCEPTS = [
 function acceptsCard(){
   return `<div class="accepts"><div class="atitle">I can handle these kinds of requests:</div>`
     + ACCEPTS.map(([label,id]) => `<div class="arow"><span class="atag">${esc(id)}</span>${esc(label)}</div>`).join('')
-    + `<div class="ano">Not supported on purpose: pay / purchase / delete / refund / legal / hiring.</div></div>`;
+    + `<div class="ano">Not supported on purpose: `
+    + ((SCOPE && SCOPE.out_of_scope_keywords) ? SCOPE.out_of_scope_keywords.slice(0,8).join(' / ') + ' \u2026' : 'pay / purchase / delete / refund / legal / hiring')
+    + `. <a class="nav" style="margin:0" href="/scope">edit scope &rarr;</a></div></div>`;
 }
 
 async function post(url, body){
@@ -139,11 +146,30 @@ async function post(url, body){
   return r.json();
 }
 
+let SCOPE = null;
+async function renderScope(){
+  try { SCOPE = await fetch('/api/scope').then(r=>r.json()); } catch(e){ return; }
+  const inRows = SCOPE.in_scope.map(r =>
+    `<div class="arow"><span class="atag">${esc(r.intent)}</span>${esc(r.label)} <span class="muted">&rarr; ${esc(r.node)}</span></div>`
+  ).join('');
+  $('#scope').innerHTML =
+    `<div class="accepts"><div class="atitle">In scope &mdash; ${SCOPE.in_scope.length} intents, each maps to one node:</div>${inRows}</div>`
+    + `<div class="accepts"><div class="atitle">Out of scope &mdash; ${SCOPE.out_of_scope_keywords.length} rejected keywords`
+      + `${SCOPE.updated ? ' <span class="muted">(updated ' + esc(SCOPE.updated) + ')</span>' : ''}:</div>`
+      + `<div class="chips">${SCOPE.out_of_scope_keywords.map(k=>`<span class="chip" style="cursor:default">${esc(k)}</span>`).join('')}</div>`
+      + `<div class="ano">If any of these appears, the request comes back <b>rejected</b> before routing. Edit the list on the <a class="nav" style="margin:0" href="/scope">scope page</a>.</div></div>`;
+  // keep the inline help line in sync with the live list
+  $('#noList').innerHTML = '&times; won\'t do on purpose: ' +
+    SCOPE.out_of_scope_keywords.slice(0, 8).join(' / ') +
+    ' &hellip; &mdash; these come back <b>rejected</b>. <a class="nav" style="margin:0" href="/scope">edit scope &rarr;</a>';
+}
+
 async function refresh(){
   const [activity, nodes] = await Promise.all([
     fetch('/api/activity').then(r=>r.json()),
     fetch('/api/nodes').then(r=>r.json()),
   ]);
+  renderScope();
   const handled = activity.filter(e=>e.state==='succeeded').length;
   const pending = activity.filter(e=>e.state==='awaiting_approval').length;
   const failed  = activity.filter(e=>e.state==='failed'||e.state==='rejected').length;

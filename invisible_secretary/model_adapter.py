@@ -13,6 +13,8 @@ from __future__ import annotations
 import re
 from typing import Protocol
 
+from . import scope_store
+
 # A rule is (intent, [keyword groups]). The intent fires when the most groups
 # match; score = number of distinct groups matched (0..2 -> confidence band).
 _RULES: list[tuple[str, list[list[str]]]] = [
@@ -66,8 +68,13 @@ class RuleClassifier:
         if _INJECTION.search(text or ""):
             notes.append("adversarial_instruction_detected_ignored")
 
+        # The out-of-scope keyword list is editable live (data/scope.json);
+        # read it here so /scope edits change classification immediately.
+        oos = scope_store.out_of_scope_keywords()
         best_intent, best_score = "unknown", 0
         for intent, groups in _RULES:
+            if intent == "out_of_scope":
+                groups = [oos]
             hits = sum(1 for g in groups if any(k in t for k in g))
             if hits > best_score:
                 best_intent, best_score = intent, hits

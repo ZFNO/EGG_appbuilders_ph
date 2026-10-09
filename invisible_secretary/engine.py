@@ -57,6 +57,37 @@ class Engine:
         self.events: dict[str, Event] = {}
         self._approvals: dict[str, str] = {}  # approval_id -> request_id
 
+    def preview(self, text: str) -> dict:
+        """Dry-run classification: report what WOULD happen. Executes nothing.
+
+        Mirrors the engine's decision path (rejected / needs_clarification /
+        routed) so the /scope page can show the real outcome of a request
+        without creating an event or touching a node.
+        """
+        rid = f"preview_{int(time.time() * 1000)}"
+        decision = self.router.route(rid, text)
+        blocked = list(getattr(decision, "_blocked", []))
+        d = decision.to_dict()
+        intent, node = d["intent"], d["node"]
+
+        if intent == "out_of_scope":
+            verdict, says = "rejected",                 "That request is outside what I do on purpose. I can't pay, buy, delete, refund, or handle legal/hiring work."
+        elif node is None or "low_confidence" in blocked or \
+                any(b.startswith("missing_params") for b in blocked):
+            verdict, says = "needs_clarification", self._clarify_prompt(decision)
+        elif node not in self.nodes:
+            verdict, says = "failed", f"No node '{node}' is wired up for that."
+        else:
+            verdict = "routed"
+            if d["requires_approval"]:
+                says = (f"That maps to '{node}' ({d['risk_level']}). I'll prepare it and "
+                        f"pause for your approval before anything is sent or committed.")
+            else:
+                says = (f"That maps to '{node}' ({d['risk_level']}), which is pre-authorized, "
+                        f"so I can run it directly.")
+
+        return {"verdict": verdict, "says": says, "decision": d, "blocked": blocked}
+
     # -- public API -----------------------------------------------------
     def process(self, request_id: str, text: str) -> Event:
         if request_id in self.events:
