@@ -163,6 +163,33 @@ class HybridAdapter:
             return f"{self.rules.name}+{self.model.name}"
         return self.rules.name
 
+    @property
+    def model_path(self) -> str | None:
+        """Filesystem path of the active local model, or None if rules-only."""
+        return getattr(self.model, "model_path", None) if self._model_ready() else None
+
+    def describe(self) -> dict:
+        """What is actually running: mode, model name and its path."""
+        if self._model_ready():
+            path = self.model_path
+            import os as _os
+            display = _os.path.basename(path.rstrip("\\/")) if path else None
+            return {
+                "mode": "rules+model",
+                "adapter": self.name,
+                "model": display or getattr(self.model, "name", "local-model"),
+                "path": path,
+                "reason": "loaded",
+            }
+        if not self.use_model:
+            reason = "disabled (IS_NO_MODEL / --no-model)"
+        elif self.model is None:
+            reason = "no local model found (rules only; no cloud fallback)"
+        else:
+            reason = "model unavailable"
+        return {"mode": "rules-only", "adapter": self.rules.name,
+                "model": None, "path": None, "reason": reason}
+
     def _model_ready(self) -> bool:
         return bool(self.use_model and self.model and
                     getattr(self.model, "available", lambda: False)())

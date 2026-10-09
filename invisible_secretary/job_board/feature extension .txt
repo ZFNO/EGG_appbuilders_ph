@@ -1,0 +1,214 @@
+
+**Product:** Invisible Secretary  
+**Change type:** Additive architecture extension  
+**Priority:** Architecture / extensibility  
+**Implementation posture:** Preserve the existing working build; integrate incrementally.
+
+## 1. Objective
+
+Extend Invisible Secretary with a **modular, dynamic, open-ended decision pipeline**. The system must be able to compose and execute registered decision notes according to the current event, available context, dependencies, policies, and intermediate results.
+
+“Open-ended” means developers can add or revise decision-note modules and capability nodes without rewriting the core router. It does **not** mean the model may generate arbitrary executable code, invent unregistered tools, bypass permissions, or run unlimited reasoning loops.
+
+Do not restart or replace the current implementation. First inspect the existing code and map this extension onto its current router, service/node registry, event lifecycle, persistence layer, and UI. Reuse existing components where practical.
+
+## 2. Core architecture
+
+Implement or adapt the following logical flow:
+
+`Event intake → Context assembly → Pipeline planning → Decision-note execution → Policy/authorization gates → Capability execution → Outcome verification → Audit and feedback`
+
+Keep these responsibilities separate:
+
+- **Local model:** Interprets natural language, proposes which registered decision notes are relevant, extracts structured parameters, and helps resolve ambiguity.
+- **Pipeline engine:** Resolves dependencies, schedules eligible notes, maintains state, enforces execution bounds, and handles retries and branches.
+- **Decision-note registry:** Stores versioned note definitions and their contracts.
+- **Policy/authorization layer:** Enforces permissions, risk controls, approval requirements, and business rules deterministically.
+- **Capability registry and nodes:** Perform actual work through explicitly registered and allow-listed capabilities.
+- **Outcome verifier:** Checks whether an action or workflow actually succeeded, failed, or remains uncertain.
+- **Audit/state layer:** Records inputs, selected notes, outputs, decisions, approvals, actions, and final status.
+
+The model recommends and parameterizes. The engine validates and orchestrates. The policy layer has final authority over whether an action is permitted.
+
+## 3. Decision notes as first-class modules
+
+Create a standard registry and interface for decision notes. Each note should define at least:
+
+- `id`: stable, unique identifier
+- `version`: explicit version
+- `description`: purpose and scope
+- `input_schema`: required and optional input fields
+- `output_schema`: structured result contract
+- `activation_conditions`: when the note may run
+- `dependencies`: required prior notes or data
+- `risk_class`: informational, reversible, consequential, or restricted
+- `timeout_ms`: execution limit
+- `retry_policy`: bounded retry behavior
+- `failure_behavior`: stop, skip, request clarification, or escalate
+- `permissions_required`: any permissions needed
+- `enabled`: whether the registry may schedule it
+
+Initial examples (adapt names to existing conventions):
+
+1. `intent_classification` — identify the user’s request or event type.
+2. `context_resolution` — collect relevant conversation, business, and event context.
+3. `urgency_assessment` — estimate time sensitivity and explain the supporting evidence.
+4. `dependency_check` — identify prerequisites, blockers, and ordering constraints.
+5. `policy_check` — evaluate applicable business rules and safety constraints.
+6. `capability_selection` — select from registered, eligible capabilities.
+7. `approval_check` — determine whether owner authorization is required.
+8. `outcome_verification` — verify execution results and unresolved conditions.
+
+These are examples, not a requirement to build eight independent services immediately. The first implementation may use lightweight functions or modules behind a shared interface.
+
+## 4. Dynamic composition
+
+The engine should support:
+
+- **Conditional activation:** Run a note only when its declared conditions are satisfied.
+- **Dependency-aware ordering:** Do not run a note until its required inputs or predecessor notes are available.
+- **Branching:** Choose a registered path based on validated intermediate results.
+- **Skipping:** Skip notes that are unnecessary for the current event, with a recorded reason where useful.
+- **Re-evaluation:** Revisit a decision when new information arrives or a relevant result changes.
+- **Clarification:** Pause and ask the user when required information is missing or materially ambiguous.
+- **Escalation:** Hand control to the owner when policy, uncertainty, risk, or failed recovery requires human input.
+- **Extension:** Register a new compatible note without editing the core router, where feasible.
+
+The pipeline may be represented as a directed graph or equivalent state machine. Choose the simplest structure that fits the current codebase; do not introduce a heavyweight workflow framework without a concrete need.
+
+## 5. Weighted signals and hard constraints
+
+The pipeline may use structured signals such as:
+
+- relevance
+- urgency
+- model-estimated confidence
+- business impact
+- reversibility
+- data completeness
+- dependency readiness
+
+Treat model-produced scores as **heuristics**, not calibrated probabilities. Document score meaning and validate it against a test set before using thresholds for consequential decisions.
+
+Weighted signals must never override hard constraints. In particular:
+
+- Urgency cannot bypass authorization.
+- Model confidence cannot grant permissions.
+- A model cannot approve its own consequential action.
+- A capability cannot be called unless it is registered, enabled, and permitted.
+- Missing mandatory information must trigger clarification or a safe stop, not invented values.
+
+## 6. Contracts and illustrative data shape
+
+Adapt the following conceptual shape to the project's current language and validation library. Do not copy it blindly if the repository already has equivalent types.
+
+A decision-note result should identify the note and version, report a typed status, return schema-validated output, and state whether execution may continue.
+
+```json
+{
+  "note_id": "dependency_check",
+  "note_version": "1.0.0",
+  "status": "completed",
+  "output": {
+    "ready": false,
+    "blockers": ["supplier_confirmation_missing"]
+  },
+  "next_step": "request_clarification"
+}
+```
+
+Use explicit statuses such as `completed`, `skipped`, `needs_input`, `blocked`, `failed`, and `timed_out`. Keep the schema strict; reject malformed output and unknown note or capability identifiers. Treat all model output as untrusted input until validated.
+
+## 7. Execution safety and reliability
+
+Implement the following controls in the engine or existing equivalent infrastructure:
+
+- Allow-list registered note IDs and capability IDs.
+- Validate every input and output against declared schemas.
+- Enforce per-note and per-pipeline timeouts.
+- Bound retries and re-evaluation counts.
+- Detect cycles and prevent unbounded loops.
+- Use idempotency keys for actions that could be repeated.
+- Persist pipeline state so a restart does not silently duplicate an external action.
+- Distinguish “action failed” from “action result unknown.”
+- Record errors and support safe recovery or escalation.
+- Apply least-privilege permissions to capabilities.
+- Require explicit approval for consequential actions unless a narrowly scoped owner-configured policy authorizes them.
+- Never execute model-generated code, shell commands, arbitrary URLs, or permission changes as pipeline instructions.
+
+The deterministic policy and authorization layer must run immediately before protected capability execution, even if an earlier decision note reported that the action was acceptable.
+
+## 8. Integration with the current product
+
+Keep the current MVP and existing workflows working, especially:
+
+- supplier/customer follow-ups
+- scheduling
+- customer requests
+
+Migrate one workflow first—preferably supplier follow-up—as a vertical slice through the new pipeline. Confirm that its existing behavior remains intact before migrating other workflows.
+
+The UI should expose only the information the owner needs:
+
+- current status
+- what the system is waiting for
+- why it selected a path or escalated
+- what approval is required
+- what action was actually performed
+- whether the outcome was verified
+
+Do not make the user manually manage a complex graph for routine use. The dynamic pipeline is primarily an internal architecture feature; expose advanced diagnostics only where useful.
+
+## 9. Suggested implementation sequence
+
+1. **Inspect and map:** Identify the current router, node/capability registry, schemas, event state, persistence, approval flow, and tests. Write down what can be reused.
+2. **Define contracts:** Add the decision-note interface and registry using the project's existing conventions.
+3. **Build the engine:** Implement dependency resolution, conditional execution, typed statuses, state tracking, and bounded execution.
+4. **Enforce policy:** Ensure permissions and approvals are deterministic and checked immediately before protected actions.
+5. **Migrate one workflow:** Run supplier follow-up through the pipeline without changing its user-facing behavior unnecessarily.
+6. **Add observability:** Log note selection, versions, outputs, branches, skipped notes, errors, approvals, actions, and verification outcomes.
+7. **Test extension:** Add a new test decision note and register it without modifying the core router.
+8. **Expand gradually:** Migrate scheduling and customer requests after the first workflow passes regression tests.
+
+Do not undertake a broad rewrite. Prefer small, reviewable commits and preserve a working path throughout implementation.
+
+## 10. Acceptance criteria
+
+The extension is ready when all of the following are demonstrated:
+
+- A new compatible decision note can be registered without changing core-router code.
+- The engine can conditionally run, skip, order, branch, and safely stop notes.
+- Missing or ambiguous required input results in clarification or escalation rather than a guessed value.
+- Invalid schemas and unknown note/capability IDs are rejected.
+- Cycles, timeouts, and retry limits are enforced.
+- Model-generated scores cannot bypass hard policy or authorization checks.
+- Consequential actions require the configured approval or explicitly authorized policy.
+- Repeated processing does not duplicate protected external actions when idempotency is supported.
+- Pipeline state and audit history explain how the final outcome was reached.
+- The supplier-follow-up vertical slice passes existing and new regression tests.
+- Existing workflows remain operational during incremental integration.
+- Tests include note failure, unavailable context, timeout, invalid output, denied permission, approval rejection, and uncertain action outcome.
+
+## 11. Required builder deliverables
+
+Return the following when implementation work is complete:
+
+1. Short architecture map of the existing system and where the extension fits.
+2. List of files added or changed, with a one-line reason for each.
+3. Decision-note contract and registry implementation.
+4. Pipeline engine implementation and policy-gate integration.
+5. One end-to-end migrated workflow.
+6. Automated test results and any untested cases.
+7. A short demonstration showing a conditional branch, a clarification/escalation path, and a newly registered note.
+8. Any known limitations and recommended next steps.
+
+## 12. Non-goals for this extension
+
+Do not, as part of this extension alone:
+
+- replace the local model or enlarge it by default;
+- allow arbitrary model-created tools or executable notes;
+- build an unrestricted autonomous-agent loop;
+- rewrite the UI into a chat-first interface;
+- migrate every workflow before the first vertical slice is proven;
+- introduce complex distributed infrastructure before there is a demonstrated need.

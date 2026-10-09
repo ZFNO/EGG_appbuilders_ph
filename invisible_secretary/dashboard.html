@@ -14,6 +14,8 @@
   header h1{font-size:16px;margin:0;font-weight:600}
   .pill{margin-left:auto;font-size:12px;padding:4px 10px;border-radius:99px;
     border:1px solid var(--line);color:var(--ok)}
+  a.nav{font-size:13px;color:var(--info);text-decoration:none;margin-left:14px}
+  a.nav:hover{text-decoration:underline}
   .wrap{padding:18px 22px;display:grid;gap:16px;grid-template-columns:1fr 1fr}
   .cards{grid-column:1/3;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
@@ -37,12 +39,31 @@
   .sim{color:var(--warn);font-size:11px}
   .muted{color:var(--mut);font-size:12px}
   .appr{margin-top:8px;padding:10px;border:1px dashed var(--warn);border-radius:9px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .chip{font:12px system-ui,Segoe UI,Roboto,sans-serif;padding:5px 9px;border:1px solid var(--line);
+    border-radius:99px;background:#0c0e12;color:var(--fg);cursor:pointer;text-align:left}
+  .chip:hover{border-color:var(--info);color:var(--info)}
+  .help{margin-top:10px;padding:11px 13px;border:1px solid var(--line);border-radius:9px;
+    background:var(--card);font-size:12.5px;color:var(--mut);line-height:1.6}
+  .help>div{margin:2px 0}
+  .help b{color:var(--fg)} .help i{color:var(--fg);font-style:italic}
+  .help code{color:var(--info);background:#0c0e12;padding:1px 5px;border-radius:5px}
+  .help .no{color:var(--bad)}
+  .help .hr{height:1px;background:var(--line);margin:9px 0}
+  .reply{font-size:15.5px;font-weight:700;color:#fff;line-height:1.55;margin-top:7px}
+  .reply .who{color:var(--warn);font-weight:800;margin-right:6px}
+  .accepts{margin:10px 0 0;padding:11px 13px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+  .accepts .atitle{font-weight:600;color:var(--fg);margin-bottom:7px}
+  .accepts .arow{padding:5px 0;border-top:1px solid var(--line);color:var(--fg)}
+  .accepts .atag{display:inline-block;min-width:158px;color:var(--info);font-size:12px}
+  .accepts .ano{margin-top:8px;color:var(--bad);font-size:12.5px}
 </style>
 </head>
 <body>
 <header>
   <h1>Invisible Secretary</h1>
   <span class="muted">local-first decision layer</span>
+  <a class="nav" href="/guide">element guide &rarr;</a>
   <span class="pill" id="runtime">runtime: local · mock services: SIMULATED</span>
 </header>
 <div class="wrap">
@@ -55,10 +76,27 @@
   <section>
     <h2>Tell it what needs handling</h2>
     <form id="cmd">
-      <input id="text" placeholder="e.g. Ask the supplier to confirm today's delivery" autocomplete="off">
+      <input id="text" placeholder="Type ONE request in plain language - e.g. follow up with Acme supplier about order #4471" autocomplete="off">
       <button>Route</button>
     </form>
-    <p class="muted">Routine work is routed to a capability. Consequential actions pause for your approval.</p>
+    <p class="muted">Free text, <b>one request per message</b>. Routine work is routed to a capability; consequential actions pause for your approval.</p>
+    <div class="help">
+      <div><b>Try one of these</b> &mdash; click to load it into the box:</div>
+      <div class="chips">
+        <button type="button" class="chip" onclick="fill(this)">Follow up with Acme supplier - order #4471 not confirmed</button>
+        <button type="button" class="chip" onclick="fill(this)">Chase the customer at Bright Co about the late delivery</button>
+        <button type="button" class="chip" onclick="fill(this)">Reschedule Thursday's meeting to Friday</button>
+        <button type="button" class="chip" onclick="fill(this)">Customer reports a broken widget, asks for help</button>
+        <button type="button" class="chip" onclick="fill(this)">Follow up with Acme supplier, deadline 2026-10-12</button>
+      </div>
+      <div class="hr"></div>
+      <div><b>What it reads from your text</b></div>
+      <div>&bull; party &mdash; a <b>Capitalized name</b> right after <code>with</code> / <code>to</code> / <code>for</code>, e.g. <i>with&nbsp;Acme</i></div>
+      <div>&bull; deadline &mdash; a date written as <code>YYYY-MM-DD</code>, e.g. <i>2026-10-12</i></div>
+      <div>&bull; everything else is free text &mdash; keep it to a <b>single ask</b> per message</div>
+      <div class="no">&times; won't do on purpose: pay / purchase / delete / refund / legal / hiring &mdash; these come back <b>rejected</b>.</div>
+      <div>Unclear or too vague? It asks you to <b>clarify</b> rather than guess. Free-text only &mdash; there is no fixed command syntax.</div>
+    </div>
   </section>
 
   <section>
@@ -80,6 +118,20 @@
 <script>
 const $ = s => document.querySelector(s);
 const esc = s => (s ?? "").toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function fill(el){ $('#text').value = el.textContent.trim(); $('#text').focus(); }
+
+const ACCEPTS = [
+  ["Follow up with a supplier / vendor", "supplier_followup"],
+  ["Follow up with a customer / client", "customer_followup"],
+  ["Reschedule / move a meeting", "schedule_change"],
+  ["Triage a customer request or complaint", "customer_request"],
+];
+function acceptsCard(){
+  return `<div class="accepts"><div class="atitle">I can handle these kinds of requests:</div>`
+    + ACCEPTS.map(([label,id]) => `<div class="arow"><span class="atag">${esc(id)}</span>${esc(label)}</div>`).join('')
+    + `<div class="ano">Not supported on purpose: pay / purchase / delete / refund / legal / hiring.</div></div>`;
+}
 
 async function post(url, body){
   const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
@@ -131,7 +183,9 @@ async function refresh(){
       <span class="tag">${esc(d.urgency_level||'')}</span>
       ${r.simulated?'<span class="sim">SIMULATED</span>':''}
     </div>
-    <div class="muted">${esc(r.summary||'')}</div>
+    ${(()=>{const txt = r.summary || (e.state==='rejected' ? "That request is outside what I do on purpose." : "");
+      if(!txt) return ''; const card = (e.state==='needs_clarification'||e.state==='rejected') ? acceptsCard() : '';
+      return `<div class="reply"><span class="who">[secretary]:</span> ${esc(txt)}</div>` + card;})()}
     <div class="muted">lifecycle: ${esc(steps)}</div></div>`;
   }).join('') || '<span class="muted">No events yet.</span>';
 }

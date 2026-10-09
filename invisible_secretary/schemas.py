@@ -93,13 +93,21 @@ def validate_decision(raw: dict) -> "RoutingDecision":
     if not isinstance(params, dict):
         raise ValidationError("parameters: object required")
 
-    urgency = raw.get("urgency", {})
-    if not isinstance(urgency, dict):
-        raise ValidationError("urgency: object required")
+    # Accept either the flat wire form (urgency_level / urgency_reason - what
+    # to_dict() emits and the dashboard renders) or a nested urgency object.
+    urgency = raw.get("urgency")
+    if urgency is None:
+        u_level_raw = raw.get("urgency_level", "normal")
+        u_reason = str(raw.get("urgency_reason", ""))
+    else:
+        if not isinstance(urgency, dict):
+            raise ValidationError("urgency: object required")
+        u_level_raw = urgency.get("level", "normal")
+        u_reason = str(urgency.get("reason", ""))
     try:
-        u_level = Urgency(urgency.get("level", "normal"))
+        u_level = Urgency(u_level_raw)
     except ValueError:
-        raise ValidationError(f"urgency.level: invalid {urgency.get('level')!r}")
+        raise ValidationError(f"urgency.level: invalid {u_level_raw!r}")
 
     conf = raw.get("confidence", 0.0)
     if not _is_num(conf) or not (0.0 <= float(conf) <= 1.0):
@@ -120,7 +128,7 @@ def validate_decision(raw: dict) -> "RoutingDecision":
         node=NodeName(node_raw) if node_raw else None,
         parameters=params,
         urgency_level=u_level,
-        urgency_reason=str(urgency.get("reason", "")),
+        urgency_reason=u_reason,
         confidence=float(conf),
         risk_level=risk,
         requires_approval=req_appr,
