@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invisible Secretary - Guide</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <h1>Invisible Secretary</h1>
+  <span class="muted">element guide - described in place</span>
+  <a class="nav" href="index.html">&larr; dashboard</a><a class="nav" href="scope.html">scope</a>
+  <span class="pill" id="runtime">runtime: local · mock services: SIMULATED</span>
+</header>
+<div class="wrap">
+  <section class="guidehead">
+    <h2>Guide - the same dashboard, described in place</h2>
+    <p class="note llm">Each functional element below carries its own description. Elements marked
+    <span class="llm">LLM</span> are the <b>only</b> place the on-device model is used; everything else is
+    deterministic. Runtime is local; all integrations are mocks labelled SIMULATED.</p>
+  </section>
+  <div class="cards">
+    <div class="card"><div class="n" id="cHandled">0</div><div class="l">Handled</div><p class="note">Terminal <b>successful</b> routings. Aggregate of outcomes - no model involved.</p></div>
+    <div class="card"><div class="n" id="cPending">0</div><div class="l">Awaiting approval</div><p class="note">Consequential actions (send/pay/delete/commit) paused until you approve. Risk &amp; approval are rule/policy driven - <b>no model</b>.</p></div>
+    <div class="card"><div class="n" id="cFailed">0</div><div class="l">Failed / rejected</div><p class="note">Node failures and out-of-scope rejects (pay/purchase/delete/legal). Deterministic - <b>no model</b>.</p></div>
+  </div>
+
+  <section>
+    <h2>Tell it what needs handling <span class="llm">uses the LLM</span></h2>
+    <form id="cmd">
+      <input id="text" placeholder="Type ONE request in plain language - e.g. follow up with Acme supplier about order #4471" autocomplete="off">
+      <button>Route</button>
+    </form>
+    <p class="note llm">Accepted input: free text, <b>one request per message</b>. There is no command syntax &mdash; the model reads intent + parameters from your words.</p>
+    <div class="help">
+      <div><b>Try one of these</b> &mdash; click to load it into the box:</div>
+      <div class="chips">
+        <button type="button" class="chip" onclick="fill(this)">Follow up with Acme supplier - order #4471 not confirmed</button>
+        <button type="button" class="chip" onclick="fill(this)">Chase the customer at Bright Co about the late delivery</button>
+        <button type="button" class="chip" onclick="fill(this)">Reschedule Thursday's meeting to Friday</button>
+        <button type="button" class="chip" onclick="fill(this)">Customer reports a broken widget, asks for help</button>
+        <button type="button" class="chip" onclick="fill(this)">Follow up with Acme supplier, deadline 2026-10-12</button>
+      </div>
+      <div class="hr"></div>
+      <div><b>What it reads from your text</b></div>
+      <div>&bull; party &mdash; a <b>Capitalized name</b> right after <code>with</code> / <code>to</code> / <code>for</code>, e.g. <i>with&nbsp;Acme</i></div>
+      <div>&bull; deadline &mdash; a date written as <code>YYYY-MM-DD</code>, e.g. <i>2026-10-12</i></div>
+      <div>&bull; everything else is free text &mdash; keep it to a <b>single ask</b> per message</div>
+      <div class="no">&times; won't do on purpose: pay / purchase / delete / refund / legal / hiring &mdash; these come back <b>rejected</b>.</div>
+      <div>Unclear or too vague? It asks you to <b>clarify</b> rather than guess. Free-text only &mdash; there is no fixed command syntax.</div>
+    </div>
+    <p class="note llm">Your free text is the model's <b>only</b> input (<code>POST /api/route</code>). Clicking <b>Route</b> runs bounded classification: rules first, the on-device Qwen model enhances (fills parameters, agrees, or <b>abstains</b> on disagreement). The model never picks the node, sets urgency, authorizes, or executes.</p>
+  </section>
+
+  <section>
+    <h2>Services / nodes</h2>
+    <p class="note">Capability list with health. Nodes are chosen by the router's allow-list - <b>no model</b>.</p>
+    <div id="nodes"></div>
+  </section>
+
+  <section style="grid-column:1/3">
+    <h2>Needs your attention</h2>
+    <p class="note">Pending approvals, each bound to an <b>exact payload hash</b> (a changed payload needs a fresh approval). Approve/Reject are deterministic - <b>no model</b>.</p>
+    <div id="attention" class="muted">Nothing pending.</div>
+  </section>
+
+  <section style="grid-column:1/3">
+    <h2>Recent activity <span class="llm">partial</span></h2>
+    <p class="note llm">Event feed: state, intent, node, urgency, lifecycle steps. The <b>intent</b> tag may come from the LLM; state, node and urgency never do. <span class="sim">SIMULATED</span> marks mock side-effects. Flow: received &rarr; <b>classified (LLM)</b> &rarr; validated &rarr; routed &rarr; running/awaiting_approval &rarr; terminal.</p>
+    <div id="activity" class="muted">No events yet.</div>
+  </section>
+</div>
+
+<script type="module">
+import "./api.js";
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? "").toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+
+function fill(el){ $('#text').value = el.textContent.trim(); $('#text').focus(); }
+
+const ACCEPTS = [
+  ["Follow up with a supplier / vendor", "supplier_followup"],
+  ["Follow up with a customer / client", "customer_followup"],
+  ["Reschedule / move a meeting", "schedule_change"],
+  ["Triage a customer request or complaint", "customer_request"],
+];
+function acceptsCard(){
+  return `<div class="accepts"><div class="atitle">I can handle these kinds of requests:</div>`
+    + ACCEPTS.map(([label,id]) => `<div class="arow"><span class="atag">${esc(id)}</span>${esc(label)}</div>`).join('')
+    + `<div class="ano">Not supported on purpose: pay / purchase / delete / refund / legal / hiring.</div></div>`;
+}
+
+async function post(url, body){
+  const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body||{})});
+  return r.json();
+}
+
+async function refresh(){
+  const [activity, nodes] = await Promise.all([
+    fetch('/api/activity').then(r=>r.json()),
+    fetch('/api/nodes').then(r=>r.json()),
+  ]);
+  const handled = activity.filter(e=>e.state==='succeeded').length;
+  const pending = activity.filter(e=>e.state==='awaiting_approval').length;
+  const failed  = activity.filter(e=>e.state==='failed'||e.state==='rejected').length;
+  $('#cHandled').textContent = handled; $('#cPending').textContent = pending;
+  $('#cFailed').textContent = failed;
+
+  $('#nodes').innerHTML = nodes.map(n =>
+    `<div class="row"><div class="top"><b>${esc(n.node)}</b>
+      <span class="tag">${esc(n.health)}</span>
+      <span class="sim">SIMULATED</span></div></div>`).join('') || '<span class="muted">none</span>';
+
+  const att = activity.filter(e=>e.state==='awaiting_approval');
+  $('#attention').innerHTML = att.map(e=>{
+    const a = e.pending_approval || {};
+    return `<div class="row"><div class="top"><b>${esc(e.decision?.intent)}</b>
+      <span class="tag">${esc(e.decision?.risk_level)}</span>
+      <span class="muted">${esc(e.decision?.urgency_reason)}</span></div>
+      <div class="appr">
+        <div>${esc(a.description)}</div>
+        <div class="muted">target: ${esc(a.target)} · bound to this exact payload</div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button onclick="approve('${a.approval_id}')">Approve</button>
+          <button class="ghost" onclick="rejectIt('${a.approval_id}')">Reject</button>
+        </div>
+      </div></div>`;
+  }).join('') || '<span class="muted">Nothing pending.</span>';
+
+  $('#activity').innerHTML = activity.slice().reverse().map(e=>{
+    const d = e.decision || {};
+    const r = e.result || {};
+    const steps = (e.history||[]).map(h=>h.state).join(' → ');
+    return `<div class="row"><div class="top">
+      <b>${esc(e.text)}</b>
+      <span class="tag st-${e.state}">${esc(e.state)}</span>
+      <span class="tag">${esc(d.intent)}</span>
+      <span class="tag">${esc(d.node||'—')}</span>
+      <span class="tag">${esc(d.urgency_level||'')}</span>
+      ${r.simulated?'<span class="sim">SIMULATED</span>':''}
+    </div>
+    ${(()=>{const txt = r.summary || (e.state==='rejected' ? "That request is outside what I do on purpose." : "");
+      if(!txt) return ''; const card = (e.state==='needs_clarification'||e.state==='rejected') ? acceptsCard() : '';
+      return `<div class="reply"><span class="who">[secretary]:</span> ${esc(txt)}</div>` + card;})()}
+    <div class="muted">lifecycle: ${esc(steps)}</div></div>`;
+  }).join('') || '<span class="muted">No events yet.</span>';
+}
+
+async function approve(id){ await post(`/api/approvals/${id}/approve`); refresh(); }
+async function rejectIt(id){ await post(`/api/approvals/${id}/reject`); refresh(); }
+
+$('#cmd').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const text = $('#text').value.trim(); if(!text) return;
+  $('#text').value=''; await post('/api/route', {text}); refresh();
+});
+
+refresh(); setInterval(refresh, 2500);
+
+// expose handlers used by inline onclick/onsubmit attributes
+Object.assign(globalThis, { fill, approve, rejectIt });
+</script>
+</body>
+</html>

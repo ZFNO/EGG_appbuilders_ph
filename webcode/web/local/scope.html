@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invisible Secretary &middot; Scope</title>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <h1>Invisible Secretary &middot; Scope</h1>
+  <a class="nav" href="index.html">&larr; dashboard</a>
+  <a class="nav" href="guide.html">element guide &rarr;</a>
+  <span class="pill" id="runtime">scope: live &middot; edits persist to data/scope.json</span>
+</header>
+
+<div class="wrap">
+  <section class="full">
+    <h2>What's in scope (the whole mapping)</h2>
+    <p class="note">Free text in, <b>closed set out</b>. Your words map to an intent; the intent maps to <b>one</b> node via a fixed allow-list. The model never picks the node. <span class="muted">(read-only &mdash; from <code>INTENT_TO_NODE</code>)</span></p>
+    <div id="inscope"></div>
+  </section>
+
+  <section>
+    <h2>Out of scope &mdash; rejected keywords</h2>
+    <p class="note">If any of these appears in the text, the request is <b>rejected</b> before routing. This list is <b>editable</b>: add or remove and the change takes effect on the next request.</p>
+    <div id="oos" class="chips"></div>
+    <form id="addkw" onsubmit="return addKw(event)">
+      <input id="kw" placeholder="add a keyword to reject, e.g. reimburse" autocomplete="off">
+      <button type="submit" class="ghost">+ Add</button>
+    </form>
+    <div class="bar">
+      <button id="save" onclick="saveScope()" disabled>Save changes</button>
+      <button class="ghost" onclick="load()">Reload</button>
+      <span class="save-state" id="savestate"></span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Live nodes</h2>
+    <div id="nodes"></div>
+    <p class="note">Urgency signals (rules, never model confidence):<br>
+      <span class="tag r3" id="u-crit"></span> &nbsp; <span class="tag r2" id="u-high"></span></p>
+    <p class="note">Confidence floor: <span class="k" id="floor"></span> &mdash; below it the router <b>asks to clarify</b> instead of guessing.</p>
+  </section>
+
+  <section class="full">
+    <h2>Test a request (dry run &mdash; executes nothing)</h2>
+    <form id="pv" onsubmit="return preview(event)">
+      <input id="pvtext" placeholder="type a request to see exactly where it maps" autocomplete="off">
+      <button type="submit">Preview</button>
+    </form>
+    <div id="pvout"></div>
+  </section>
+</div>
+
+<script type="module">
+import "./api.js";
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? "").toString().replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let STATE = { oos: [], dirty: false };
+
+async function get(url){ return (await fetch(url)).json(); }
+async function post(url, body){
+  return (await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body||{})})).json();
+}
+
+function renderInScope(rows){
+  $('#inscope').innerHTML = rows.map(r => `
+    <div class="row">
+      <div class="top">
+        <span class="k">${esc(r.label)}</span>
+        <span class="tag">${esc(r.intent)}</span>
+        <span class="tag node">&rarr; ${esc(r.node)}</span>
+        <span class="tag ${r.risk === 'R3' ? 'r3' : 'r2'}">${esc(r.risk)}</span>
+        <span class="tag">${r.requires_approval ? 'needs approval' : 'pre-authorized'}</span>
+      </div>
+      <div class="muted" style="margin-top:5px">${esc(r.node_description)}
+        ${r.action ? ' &middot; action: <code>'+esc(r.action)+'</code>' : ''}</div>
+      <div class="muted" style="margin-top:3px">requires: ${r.required_params.map(p=>'<code>'+esc(p)+'</code>').join(' ')||'&mdash;'}
+        &middot; e.g. <i>${esc(r.example)}</i></div>
+    </div>`).join('');
+}
+
+function renderOos(){
+  $('#oos').innerHTML = STATE.oos.map((k,i) =>
+    `<span class="chip">${esc(k)}<span class="x" title="remove" onclick="removeKw(${i})">&times;</span></span>`
+  ).join('') || '<span class="muted">Nothing rejected by keyword.</span>';
+  $('#save').disabled = !STATE.dirty;
+}
+
+function renderNodes(o){
+  $('#nodes').innerHTML = o.nodes.map(n => `
+    <div class="row"><div class="top"><span class="k">${esc(n.node)}</span>
+      <span class="tag ${n.health==='ok'?'r2':'r3'}">${esc(n.health)}</span></div>
+      <div class="muted" style="margin-top:4px">${esc(n.description)}</div></div>`).join('');
+  $('#u-crit').textContent = 'critical: ' + o.urgency_keywords.critical.join(', ');
+  $('#u-high').textContent = 'high: ' + o.urgency_keywords.high.join(', ');
+  $('#floor').textContent = o.confidence_floor;
+}
+
+function addKw(ev){
+  ev.preventDefault();
+  const v = $('#kw').value.trim().toLowerCase();
+  if(v && !STATE.oos.includes(v)){ STATE.oos.push(v); STATE.dirty = true; }
+  $('#kw').value = ''; renderOos(); return false;
+}
+function removeKw(i){ STATE.oos.splice(i,1); STATE.dirty = true; renderOos(); }
+
+async function saveScope(){
+  const r = await post('/api/scope', {out_of_scope_keywords: STATE.oos});
+  const st = $('#savestate');
+  if(r && Array.isArray(r.out_of_scope_keywords)){
+    STATE.oos = r.out_of_scope_keywords; STATE.dirty = false; renderOos();
+    st.className = 'save-state ok';
+    st.textContent = 'saved ' + (r.updated ? 'at ' + r.updated : '') + ' &mdash; live now';
+    st.innerHTML = 'saved ' + (r.updated ? 'at ' + esc(r.updated) : '') + ' &mdash; live now';
+  } else {
+    st.className = 'save-state err'; st.textContent = 'save failed';
+  }
+}
+
+let SNAPSHOT = JSON.stringify(STATE.oos);
+
+async function load(){
+  const o = await get('/api/scope');
+  STATE.oos = o.out_of_scope_keywords.slice(); STATE.dirty = false;
+  renderInScope(o.in_scope); renderNodes(o); renderOos();
+  $('#pvout').innerHTML = '';
+}
+
+async function preview(ev){
+  ev.preventDefault();
+  const text = $('#pvtext').value;
+  if(!text.trim()) return false;
+  const r = await post('/api/preview', {text});
+  const d = r.decision || {};
+  const cls = 'v-' + (r.verdict || 'failed');
+  const blocked = (r.blocked && r.blocked.length) ? r.blocked.join(', ') : '&mdash;';
+  $('#pvout').innerHTML = `
+    <div class="result">
+      <div class="reply" style="font-size:15.5px;font-weight:700;color:#fff">
+        <span class="who">[secretary]:</span> ${esc(r.says || '')}</div>
+      <div style="margin-top:8px"><span class="verdict ${cls}">${esc(r.verdict)}</span></div>
+      <div class="kv">intent: <b>${esc(d.intent)}</b> &nbsp; node: <b>${esc(d.node ?? '—')}</b>
+        &nbsp; risk: <b>${esc(d.risk_level)}</b> &nbsp; approval: <b>${d.requires_approval}</b></div>
+      <div class="kv">urgency: <b>${esc(d.urgency_level)}</b> (${esc(d.urgency_reason || '')})
+        &nbsp; confidence: <b>${esc(d.confidence)}</b></div>
+      <div class="kv">params: <code>${esc(JSON.stringify(d.parameters||{}))}</code></div>
+      <div class="kv">blocked: ${blocked}</div>
+    </div>`;
+  return false;
+}
+
+load();
+
+// expose handlers used by inline onclick/onsubmit attributes
+Object.assign(globalThis, { load, saveScope, addKw, preview, removeKw });
+</script>
+</body>
+</html>
