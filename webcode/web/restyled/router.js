@@ -52,8 +52,8 @@ export class Router {
     return ["normal", "no urgency signal"];
   }
 
-  route(requestId, text) {
-    const modelOut = this.model.classify(text);
+  async route(requestId, text) {
+    const modelOut = await this.model.classify(text);
     let intent = modelOut.intent === undefined ? "unknown" : modelOut.intent;
     const params = Object.assign({}, modelOut.parameters || {});
     const confidence = Number(modelOut.confidence === undefined ? 0.0 : modelOut.confidence);

@@ -133,9 +133,9 @@ export class Engine {
   }
 
   // Dry-run classification: report what WOULD happen. Executes nothing.
-  preview(text) {
+  async preview(text) {
     const rid = `preview_${Date.now()}`;
-    const decision = this.router.route(rid, text);
+    const decision = await this.router.route(rid, text);
     const blocked = [...(decision._blocked || [])];
     const intent = decision.intent;
     const node = decision.node;
@@ -167,7 +167,7 @@ export class Engine {
   }
 
   // -- public API -----------------------------------------------------
-  process(requestId, text) {
+  async process(requestId, text) {
     if (this.events.has(requestId)) {
       const ev = this.events.get(requestId);
       ev.log("duplicate_ignored", { note: "idempotency key already seen" });
@@ -178,7 +178,7 @@ export class Engine {
     this.events.set(requestId, ev);
     ev.log("received");
 
-    const decision = this.router.route(requestId, text);
+    const decision = await this.router.route(requestId, text);
     ev.decision = decision;
     ev.log("classified", {
       intent: decision.intent,

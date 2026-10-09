@@ -6,8 +6,9 @@
 // unavailable, so model_adapter's HybridAdapter runs RULES-ONLY. There is never
 // a cloud fallback - classification is an enhancement, never a requirement.
 //
-// A future real backend can be injected at window.__IS_ONNX_BACKEND__; it must
-// expose { available(): bool, classify(text): {intent, parameters, ...} }.
+// A real backend IS injected at window.__IS_ONNX_BACKEND__ by sidecar_client.js
+// (a localhost Python sidecar hosting the weights out-of-process). It must
+// expose { available(): bool, classify(text): Promise<{intent, parameters, ...}> }.
 
 export const INTENTS = [
   "supplier_followup", "customer_followup", "schedule_change",
@@ -24,8 +25,12 @@ export function webgpuPlausible() {
   return typeof navigator !== "undefined" && !!navigator.gpu;
 }
 
-// Locate an on-device model. Browser build: nothing to discover on disk.
+// Locate an on-device model. With a sidecar backend installed the model lives
+// out-of-process; report its dir/name so the factory wires a real adapter. With
+// no backend the static build stays rules-only (no weights, no cloud fallback).
 export function discoverDefault(_model = null) {
+  const injected = (typeof globalThis !== "undefined" && globalThis.__IS_ONNX_BACKEND__) || null;
+  if (injected) return injected.model_path || "Qwen2.5-0.5B-Instruct";
   return null;
 }
 
@@ -45,9 +50,9 @@ export class QwenOnnxAdapter {
     return false;
   }
 
-  classify(text) {
+  async classify(text) {
     if (this._injected && typeof this._injected.classify === "function") {
-      return this._injected.classify(text);
+      return await this._injected.classify(text);
     }
     throw new Error("local model not provisioned; no cloud fallback permitted");
   }

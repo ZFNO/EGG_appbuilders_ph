@@ -131,12 +131,12 @@ export class QwenLocalAdapter {
     return Boolean(this.model_path);
   }
 
-  classify(text) {
+  async classify(text) {
     const backend = this._impl;
     if (backend === null) {
       throw new Error("local model not provisioned; no cloud fallback permitted");
     }
-    return backend.classify(text);
+    return await backend.classify(text);
   }
 }
 
@@ -188,14 +188,14 @@ export class HybridAdapter {
     return { mode: "rules-only", adapter: this.rules.name, model: null, path: null, reason };
   }
 
-  classify(text) {
+  async classify(text) {
     const out = this.rules.classify(text);
     out.model_used = this.rules.name;
     if (!this._modelReady()) return out;
 
     let m;
     try {
-      m = this.model.classify(text);
+      m = await this.model.classify(text);
     } catch (exc) {
       // local runtime must never break routing
       out.model_error = `${exc && exc.name ? exc.name : "Error"}: ${exc && exc.message ? exc.message : exc}`;

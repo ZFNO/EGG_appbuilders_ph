@@ -23,24 +23,24 @@ const api = apiModule.default || apiModule.api;
 
 const newEngine = () => new Engine(defaultAdapter({ useModel: true }));
 
-test("out-of-scope rejects before routing", () => {
+test("out-of-scope rejects before routing", async () => {
   const eng = newEngine();
-  const ev = eng.process("oos1", "Pay the Acme invoice 88213 today");
+  const ev = await eng.process("oos1", "Pay the Acme invoice 88213 today");
   assert.equal(ev.state, "rejected");
   assert.equal(ev.decision.intent, "out_of_scope");
   assert.equal(ev.decision.node, null);
 });
 
-test("low-confidence request asks to clarify (never guesses)", () => {
+test("low-confidence request asks to clarify (never guesses)", async () => {
   const eng = newEngine();
-  const ev = eng.process("low1", "Please reschedule something");
+  const ev = await eng.process("low1", "Please reschedule something");
   assert.equal(ev.state, "needs_clarification");
   assert.equal(ev.result.status, "needs_clarification");
 });
 
-test("R3 consequential request needs approval (bound to exact payload)", () => {
+test("R3 consequential request needs approval (bound to exact payload)", async () => {
   const eng = newEngine();
-  const ev = eng.process("r3a", "Follow up with Acme supplier - order #4471 not confirmed");
+  const ev = await eng.process("r3a", "Follow up with Acme supplier - order #4471 not confirmed");
   assert.equal(ev.state, "awaiting_approval");
   assert.equal(ev.decision.risk_level, "R3");
   assert.equal(ev.decision.requires_approval, true);
@@ -48,27 +48,27 @@ test("R3 consequential request needs approval (bound to exact payload)", () => {
   assert.equal(ev.pending_approval.simulated, true);
 });
 
-test("R2 route_to_queue is pre-authorized and succeeds", () => {
+test("R2 route_to_queue is pre-authorized and succeeds", async () => {
   const eng = newEngine();
-  const ev = eng.process("r2a", "Customer reports a broken widget, asks for help");
+  const ev = await eng.process("r2a", "Customer reports a broken widget, asks for help");
   assert.equal(ev.state, "succeeded");
   assert.equal(ev.decision.risk_level, "R2");
   assert.equal(ev.result.side_effect_performed, true);
   assert.equal(ev.result.simulated, true);
 });
 
-test("high urgency never bypasses authorization", () => {
+test("high urgency never bypasses authorization", async () => {
   const eng = newEngine();
-  const ev = eng.process("urg1",
+  const ev = await eng.process("urg1",
     "URGENT today: follow up with Acme supplier - order #4471 not confirmed, ASAP");
   assert.equal(ev.decision.requires_approval, true);
   assert.equal(ev.state, "awaiting_approval");
   assert.ok(["high", "critical"].includes(ev.decision.urgency_level));
 });
 
-test("approval re-runs the node; a changed payload is invalidated", () => {
+test("approval re-runs the node; a changed payload is invalidated", async () => {
   const eng = newEngine();
-  const ev = eng.process("appr1", "Follow up with Acme supplier - order #4471 not confirmed");
+  const ev = await eng.process("appr1", "Follow up with Acme supplier - order #4471 not confirmed");
   const id = ev.pending_approval.approval_id;
 
   // a changed payload must NOT carry the old approval

@@ -1,0 +1,5 @@
+# Local model sidecar dependencies (Python).
+# Installed in the system interpreter; the sidecar itself vendors nothing else.
+onnxruntime>=1.17
+transformers>=4.40
+numpy

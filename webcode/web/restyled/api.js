@@ -11,6 +11,7 @@
 //   POST /api/approvals/{id}/{approve|reject}-> engine (via the bus)
 //   GET  /api/activity, /api/nodes, /api/model, /api/jobs/{id}
 
+import "./sidecar_client.js"; // installs globalThis.__IS_ONNX_BACKEND__ + status
 import { Message } from "./bus.js";
 import { buildRuntime, startWorkers } from "./runtime.js";
 import * as scopeStore from "./scope_store.js";
@@ -52,7 +53,7 @@ export async function handle(method, path, body) {
     return { status: 200, data: scopeStore.save(kws) };
   }
   if (m === "POST" && p === "/api/preview") {
-    return { status: 200, data: engine.preview(body.text || "") };
+    return { status: 200, data: await engine.preview(body.text || "") };
   }
   if (m === "GET" && p === "/api/model") {
     return { status: 200, data: engine.router.model.describe() };
@@ -93,7 +94,7 @@ export async function handle(method, path, body) {
     return { status: 200, data: [...engine.events.values()].map((e) => e.toDict()) };
   }
   if (m === "GET" && p === "/api/nodes") {
-    return { status: 200, data: [...engine.nodes.values()].map((n) => n.health()) };
+    return { status: 200, data: Object.values(engine.nodes).map((n) => n.health()) };
   }
   if (m === "GET" && p.startsWith("/api/jobs/")) {
     const jobId = decodeURIComponent(p.slice("/api/jobs/".length));
