@@ -1,0 +1,2 @@
+-- Seed data for local dev.
+-- insert into public.things (name) values ('hello');

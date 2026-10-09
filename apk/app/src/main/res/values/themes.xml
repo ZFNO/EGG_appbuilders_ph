@@ -1,0 +1,6 @@
+<resources>
+    <style name="Theme.EggApp" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:statusBarColor">#0b0b0b</item>
+        <item name="android:windowBackground">#0b0b0b</item>
+    </style>
+</resources>
