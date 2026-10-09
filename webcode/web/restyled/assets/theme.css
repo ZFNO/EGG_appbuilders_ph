@@ -1,0 +1,48 @@
+/* =========================================================================
+   THEME TOKENS  --  the single source of truth for every colour in the app.
+   Aesthetic: bold, high-contrast, angular "menu" look -- neon green on black.
+   Re-skinning the whole app = editing this one :root block, nothing else.
+   No other stylesheet may contain a colour literal; they all use var(...).
+   ========================================================================= */
+:root{
+  /* ---- surfaces (black base) ---- */
+  --bg:            #050505;                 /* page base */
+  --ink:           #000000;                 /* deepest black (wells, inputs) */
+  --panel:         #0b0d0b;                 /* near-black panel */
+  --panel-2:       #111511;                 /* raised panel */
+  --line:          #213021;                 /* hairlines / borders */
+  --nav-bg:        rgba(5,5,5,.88);         /* translucent top bar */
+
+  /* ---- text ---- */
+  --fg:            #e8ffe4;                 /* primary text */
+  --muted:         #7f8f7b;                 /* secondary text */
+  --white:         #ffffff;                 /* pure white (display heads) */
+  --stroke:        #000000;                 /* text-stroke / hard shadow base */
+
+  /* ---- accent: neon green (replaces the old warm accent) ---- */
+  --accent:        #39ff14;                 /* primary neon green */
+  --accent-2:      #00ff41;                 /* secondary neon green */
+  --accent-dk:     #0b7a1e;                 /* darker green (slabs/shadows) */
+  --accent-soft:   rgba(57,255,20,.08);     /* faint green wash */
+  --accent-line:   rgba(57,255,20,.35);     /* soft green borders */
+  --accent-glow:   rgba(57,255,20,.55);     /* glow / hard-shadow colour */
+  --shadow-hard:   rgba(57,255,20,.55);     /* solid offset drop-shadow */
+  --shadow-soft:   rgba(0,0,0,.6);          /* soft depth shadow */
+  --scan:          rgba(57,255,20,.035);    /* 45-degree hatch overlay */
+
+  /* ---- animated background layers ---- */
+  --stripe-a:      #060706;
+  --stripe-b:      #0d100d;
+
+  /* ---- status ---- */
+  --ok:            #39ff14;
+  --warn:          #ffd23f;
+  --bad:           #ff4d4d;
+  --info:          var(--accent);
+  --llm:           var(--accent-2);
+
+  /* ---- geometry ---- */
+  --skew:          -3deg;                   /* text slant */
+  --skew-lg:       -14deg;                  /* decorative shape slant */
+  --compress:      scaleX(.90);             /* horizontally compressed titles */
+}
