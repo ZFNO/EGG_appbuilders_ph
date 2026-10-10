@@ -36,10 +36,19 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
+
+    packaging {
+        resources.excludes += setOf("META-INF/*.kotlin_module")
+    }
 }
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.webkit:webkit:1.11.0")
+
+    // Native inference. Full AAR ("all types and operators") -> ships the
+    // com.microsoft::MatMulNBits q4 kernel this model needs. Do NOT swap for a
+    // stripped onnxruntime-mobile build unless MatMulNBits is in its ops config.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.20.0")
 }

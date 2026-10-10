@@ -1,7 +1,9 @@
 // EGG Chat Test - on-device chatbot (isolated test APK).
-// Runtime: @huggingface/transformers -> onnxruntime-web (WASM). SELF-HOSTED, NO CDN.
-// Model: onnx-community/Qwen2.5-0.5B-Instruct (q4) under ./models/ . Zero network.
-import { pipeline, env, TextStreamer } from '@huggingface/transformers';
+// UI + tokenizer only. Inference runs NATIVELY (ONNX Runtime, Kotlin) and is bridged
+// via WebMessagePort ("nativeBridge"). The WebView no longer loads the model, so the
+// 483 MB weights never touch WASM linear memory (which killed the renderer before).
+// Tokenizer + chat template + detokenize stay here (tiny); the heavy matmuls are native.
+import { AutoTokenizer, env } from '@huggingface/transformers';
 
 const BASE = new URL('.', location.href).href; // app root inside the APK WebView
 
@@ -10,16 +12,6 @@ env.allowRemoteModels = false;
 env.allowLocalModels = true;
 env.localModelPath = BASE + 'models/';
 env.useBrowserCache = false;
-// Force the smaller NON-asyncify ORT wasm pair. The default entry resolves
-// to ort-wasm-simd-threaded.asyncify.wasm (26.8 MB); compiling that inside
-// the 32-bit Huawei WebView (Chromium 114) aborts the renderer (V8 CHECK in
-// ThreadPoolForegroundWorker -> SIGTRAP). The plain threaded build is ~11 MB.
-env.backends.onnx.wasm.wasmPaths = {
-  mjs:  BASE + 'ort/ort-wasm-simd-threaded.mjs',
-  wasm: BASE + 'ort/ort-wasm-simd-threaded.wasm',
-};
-env.backends.onnx.wasm.numThreads = 1;              // single-thread: no COOP/COEP needed
-env.backends.onnx.wasm.proxy = false;
 
 const _fetch = globalThis.fetch;
 globalThis.fetch = function (u) {
@@ -42,7 +34,8 @@ const stateEl = document.getElementById('state');
 const dot = document.getElementById('dot');
 
 const history = [{ role: 'system', content: SYS }];
-let generator = null;
+let tokenizer = null;
+let gen = null; // active generation callbacks
 
 function setState(txt, cls) {
   stateEl.textContent = txt;
@@ -58,81 +51,121 @@ function addMsg(cls, text) {
   return d;
 }
 
+// ---- native bridge ---------------------------------------------------------
+const bridge = window.nativeBridge;
+function toNative(obj) { bridge.postMessage(JSON.stringify(obj)); }
+
+function onNative(m) {
+  switch (m.type) {
+    case 'status':
+      setState(m.text || 'working...', 'load'); break;
+    case 'progress':
+      setState('copying model ' + Math.round((m.done / 507000000) * 100) + '%', 'load'); break;
+    case 'ready':
+      setState('ready', 'ready');
+      sendBtn.disabled = false;
+      addMsg('sys', 'Native engine ready. On-device, no network.');
+      break;
+    case 'token':
+      if (gen) gen.onToken(m.id); break;
+    case 'done':
+      if (gen) gen.onDone(); break;
+    case 'error':
+      if (gen) gen.onError(m.message);
+      else { setState('error', 'err'); addMsg('sys', 'Error: ' + m.message); }
+      break;
+  }
+}
+
+if (bridge) {
+  bridge.onmessage = (e) => {
+    let m; try { m = JSON.parse(e.data); } catch { return; }
+    onNative(m);
+  };
+} else {
+  addMsg('sys', 'Native bridge unavailable in this WebView.');
+  setState('error', 'err');
+}
+
 // ---- boot ------------------------------------------------------------------
 async function boot() {
-  setState('loading model...', 'load');
-  const t0 = performance.now();
+  setState('loading tokenizer...', 'load');
   try {
-    generator = await pipeline('text-generation', MODEL, {
-      dtype: 'q4',
-      progress_callback: (p) => {
-        if (p && p.status === 'progress' && p.file) {
-          setState('loading ' + p.file + ' ' + Math.round(p.progress || 0) + '%', 'load');
-        }
-      },
-    });
-    const dt = ((performance.now() - t0) / 1000).toFixed(1);
-    setState('ready (' + dt + 's)', 'ready');
-    sendBtn.disabled = false;
-    addMsg('sys', 'Model loaded on-device via WASM in ' + dt + 's. Everything is local - no network.');
+    tokenizer = await AutoTokenizer.from_pretrained(MODEL);
   } catch (e) {
     setState('error', 'err');
-    addMsg('sys', 'Failed to load model: ' + ((e && e.message) || e));
-    console.error(e);
+    addMsg('sys', 'Tokenizer failed: ' + ((e && e.message) || e));
+    return;
   }
+  setState('starting engine...', 'load');
+  toNative({ type: 'init' });
 }
 
 // ---- streaming reply -------------------------------------------------------
 async function reply(userText) {
   history.push({ role: 'user', content: userText });
   const el = addMsg('bot typing', '');
-  let acc = '';
-  const streamer = new TextStreamer(generator.tokenizer, {
-    skip_prompt: true,
-    skip_special_tokens: true,
-    callback_function: (t) => { acc += t; el.textContent = acc; scroll(); },
-  });
+
+  let ids;
   try {
-    const out = await generator(history, {
-      max_new_tokens: MAX_NEW,
-      do_sample: true,
-      temperature: 0.7,
-      top_p: 0.8,
-      top_k: 20,
-      repetition_penalty: 1.1,
-      streamer,
+    const text = await tokenizer.apply_chat_template(history, {
+      tokenize: false,
+      add_generation_prompt: true,
     });
-    let text = acc;
-    if (!text.trim()) {
-      const last = out && out[0] && out[0].generated_text;
-      text = Array.isArray(last)
-        ? String((last.at(-1) || {}).content || '')
-        : String(last || '');
-    }
-    text = text.trim();
-    el.textContent = text || '(no output)';
-    history.push({ role: 'assistant', content: text });
+    const enc = await tokenizer(text, { add_special_tokens: false });
+    ids = Array.from(enc.input_ids.data).map(Number);
   } catch (e) {
-    el.textContent = 'Error: ' + ((e && e.message) || e);
-    console.error(e);
-  } finally {
     el.classList.remove('typing');
+    el.textContent = 'Prompt error: ' + ((e && e.message) || e);
+    return;
   }
+
+  let accIds = [];
+  let shown = '';
+
+  gen = {
+    onToken: (id) => {
+      accIds.push(id);
+      const t = tokenizer.decode(accIds, { skip_special_tokens: true });
+      if (t.length >= shown.length) { shown = t; el.textContent = t; scroll(); }
+    },
+    onDone: () => {
+      el.classList.remove('typing');
+      if (!shown.trim()) el.textContent = '(no output)';
+      history.push({ role: 'assistant', content: shown });
+      gen = null;
+    },
+    onError: (msg) => {
+      el.classList.remove('typing');
+      el.textContent = 'Error: ' + msg;
+      gen = null;
+    },
+  };
+
+  toNative({
+    type: 'generate',
+    ids,
+    max_new: MAX_NEW,
+    temperature: 0.7,
+    top_k: 20,
+    top_p: 0.8,
+    repetition_penalty: 1.1,
+  });
 }
 
-async function onSend() {
-  const text = input.value.trim();
-  if (!text || !generator) return;
+// ---- input wiring ----------------------------------------------------------
+function submit() {
+  const v = input.value.trim();
+  if (!v || !tokenizer || gen) return;
   input.value = '';
   input.style.height = 'auto';
-  addMsg('user', text);
-  sendBtn.disabled = true;
-  try { await reply(text); } finally { sendBtn.disabled = false; }
+  addMsg('user', v);
+  reply(v);
 }
 
-sendBtn.addEventListener('click', onSend);
+sendBtn.addEventListener('click', submit);
 input.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onSend(); }
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
 });
 input.addEventListener('input', () => {
   input.style.height = 'auto';
