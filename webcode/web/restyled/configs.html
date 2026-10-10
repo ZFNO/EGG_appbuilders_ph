@@ -27,10 +27,12 @@
     <div class="bar">
       <button onclick="saveProfile()">Save &amp; read</button>
       <button class="ghost" onclick="inferProfile()">Read profile</button>
+      <button class="ghost" onclick="rerollProfile()">&#10227; Reroll example</button>
       <button class="ghost" onclick="resetProfile()">Use example</button>
       <span class="save-state" id="profilestate"></span>
     </div>
-    <p class="note">Tip: mention words you use for urgency, and anything the assistant should never touch.</p>
+    <p class="note">Tip: mention words you use for urgency, and anything the assistant should never touch.
+      Reroll loads a different example persona (nothing is saved until you Save).</p>
   </section>
 
   <section class="full" id="suggestBox" hidden>
@@ -325,12 +327,23 @@ function currentValue(k){
   return "";
 }
 
+let PROFILE_EXAMPLES = [];
+
 async function loadProfile(){
   const o = await get("/api/profile");
+  PROFILE_EXAMPLES = Array.isArray(o.examples) && o.examples.length ? o.examples : [o.defaults];
   $("#profile").value = o.text;
   const st = $("#profilestate");
   st.className = "save-state";
   st.textContent = o.updated ? ("saved " + o.updated) : "example shown (not saved)";
+}
+
+// A random example that is not the one currently in the box.
+function pickExample(){
+  const cur = $("#profile").value.trim();
+  const pool = PROFILE_EXAMPLES.filter(e => e.trim() !== cur);
+  const list = pool.length ? pool : PROFILE_EXAMPLES;
+  return list[Math.floor(Math.random() * list.length)];
 }
 
 function renderSuggestions(inf){
@@ -366,9 +379,22 @@ async function inferProfile(){
 }
 
 async function resetProfile(){
-  const o = await get("/api/profile");
-  $("#profile").value = o.defaults;
+  $("#profile").value = PROFILE_EXAMPLES[0] || (await get("/api/profile")).defaults;
   await inferProfile();
+  setProfileState("starter example (not saved)");
+}
+
+// Cycle to a different example persona and read it.
+async function rerollProfile(){
+  $("#profile").value = pickExample();
+  await inferProfile();
+  setProfileState("shuffled example (not saved)");
+}
+
+function setProfileState(txt){
+  const st = $("#profilestate");
+  st.className = "save-state";
+  st.textContent = txt;
 }
 
 async function applySuggestions(){
@@ -384,8 +410,8 @@ async function applySuggestions(){
   st.textContent = "applied " + Object.keys(picked).length + " setting(s)";
 }
 
-Object.assign(window, { load, saveConfig, resetConfig,
-  loadProfile, saveProfile, inferProfile, resetProfile, applySuggestions });
+Object.assign(window, { load, saveConfig, resetConfig, loadProfile, saveProfile,
+  inferProfile, resetProfile, rerollProfile, pickExample, applySuggestions });
 loadProfile();
 load();
 </script>

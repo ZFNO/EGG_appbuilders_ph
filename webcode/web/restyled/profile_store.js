@@ -17,8 +17,12 @@ import * as scopeStore from "./scope_store.js";
 
 export const PROFILE_KEY = "data/profile.json";
 
-// A friendly starter document. Users edit this in their own words.
-export const DEFAULT_PROFILE = `# Who I am
+// Example profile documents. The first is the friendly starter; the rest are
+// longer, more varied personas to riff on or reroll through. Each names an
+// identity, its own urgency words and things to never touch, so the rule parser
+// always has plenty to read. Users edit these in their own words.
+export const EXAMPLES = [
+`# Who I am
 I run a small bicycle-repair shop and do all the admin myself. I like to move
 fast and stay hands-off, so only stop me when money or a customer complaint is
 involved.
@@ -28,7 +32,83 @@ When I write "pronto" I mean right now.
 "later today" just means before the day ends.
 
 # Never touch
-Never touch payroll or refunds, and nothing legal.`;
+Never touch payroll or refunds, and nothing legal.`,
+
+`# Who I am
+I own a small coffee roastery and handle all the admin myself, from green-bean
+orders to wholesale invoices. I like to stay hands-off, so only pull me in when
+a payment is involved or a customer is upset.
+
+# My urgency words
+"on the double" means drop everything and do it right now.
+"by end of day" just means later today - before I close up shop.
+
+# Never touch
+Never touch the customs paperwork or anything tax-related. Don't message my
+accountant without asking.`,
+
+`# Who I am
+I'm a freelance graphic designer juggling several clients at once. I'm careful
+with my reputation, so please always confirm with me before anything goes out
+to a client. I'd like to let the model draft replies for me.
+
+# My urgency words
+"fire drill" means critical - stop the presses.
+"this afternoon" means high priority but later today is fine.
+
+# Never touch
+Never send contracts or quotes without my sign-off. Avoid anything about
+pricing negotiations and legal disputes.`,
+
+`# Who I am
+I run a small online store selling handmade candles. I'm hands-off and want
+things to run automatic, so keep the interruptions to a minimum.
+
+# My urgency words
+"now" means critical.
+"today" is urgent.
+
+# Never touch
+Never touch the supplier wire transfers. Don't change prices or run discounts.`,
+
+`# Who I am
+I coordinate volunteers for a small non-profit. We handle sensitive casework,
+so keep it private and stay rules only. Always ask me before contacting
+anyone.
+
+# My urgency words
+"top of the list" is critical.
+"this week" is high priority.
+
+# Never touch
+Never share donor lists or client records. Avoid anything about grants and
+fundraising appeals.`,
+
+`# Who I am
+I'm a general contractor running several job sites. I like to move fast and
+keep things hands-off; only stop me when a customer complaint or a big payment
+is involved. Go ahead and use the model to draft replies.
+
+# My urgency words
+"yesterday" means critical - it's already late.
+"this morning" means high priority.
+
+# Never touch
+Never sign change orders. Don't touch building permits or anything with the
+city.`,
+];
+
+// The starter document shown by default (kept as its own export).
+export const DEFAULT_PROFILE = EXAMPLES[0];
+
+// Pick an example, never the one already on screen. `rand` is injectable for
+// tests. Falls back to the full list if everything else has been filtered out.
+export function randomExample(exclude, rand = Math.random) {
+  const cur = String(exclude || "").trim();
+  const pool = EXAMPLES.filter((e) => e.trim() !== cur);
+  const list = pool.length ? pool : EXAMPLES;
+  return list[Math.floor(rand() * list.length)];
+}
 
 // Only these keys are ever produced/applied.
 export const SUGGESTION_KEYS = [

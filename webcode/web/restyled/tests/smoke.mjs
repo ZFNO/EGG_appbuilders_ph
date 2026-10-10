@@ -156,3 +156,46 @@ test("identity profile: /api/profile saves, infers and applies (no network)", as
   const after = await api.handle("GET", "/api/config");
   assert.equal(after.data.policy.confidence_floor, floor0);
 });
+
+test("example profiles are a rich, distinct set - each one yields suggestions", async () => {
+  const { EXAMPLES, DEFAULT_PROFILE, inferRules, randomExample } = await import("../profile_store.js");
+
+  assert.ok(EXAMPLES.length >= 5, "expected several example personas");
+  assert.equal(new Set(EXAMPLES).size, EXAMPLES.length, "examples must be distinct");
+  assert.equal(EXAMPLES[0], DEFAULT_PROFILE, "the first example is the starter");
+
+  for (const ex of EXAMPLES) {
+    assert.ok(ex.length > 250, "each example should be a comprehensive document");
+    assert.match(ex, /# Who I am/, "each example names an identity");
+    assert.match(ex, /# Never touch/, "each example says what to never touch");
+    const r = inferRules(ex);
+    assert.ok(r.suggestions.confidence_floor !== undefined, "each example sets a confidence floor");
+    assert.ok(r.suggestions.out_of_scope_keywords.length >= 2, "each example names rejected terms");
+    assert.ok(r.suggestions.urgency_critical.length >= 1, "each example names a critical word");
+    assert.ok(r.suggestions.urgency_high.length >= 1, "each example names a high-urgency word");
+  }
+});
+
+test("randomExample never repeats the text already on screen", async () => {
+  const { EXAMPLES, DEFAULT_PROFILE, randomExample } = await import("../profile_store.js");
+
+  for (const ex of EXAMPLES) {
+    for (let i = 0; i < 50; i++) {
+      const picked = randomExample(ex);
+      assert.notEqual(picked, ex);
+      assert.ok(EXAMPLES.includes(picked));
+    }
+  }
+  // a deterministic pick still avoids the excluded text
+  assert.notEqual(randomExample(DEFAULT_PROFILE, () => 0), DEFAULT_PROFILE);
+  // exclusive-matches-everything still returns a valid example
+  assert.ok(EXAMPLES.includes(randomExample(EXAMPLES.join(""))));
+});
+
+test("the profile API exposes the example set for reroll", async () => {
+  const o = await api.handle("GET", "/api/profile");
+  assert.equal(o.status, 200);
+  assert.ok(Array.isArray(o.data.examples));
+  assert.ok(o.data.examples.length >= 5);
+  assert.equal(o.data.examples[0], o.data.defaults);
+});

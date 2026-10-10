@@ -157,7 +157,8 @@ export async function handle(method, path, body) {
 // The identity profile document + the starter text, for the Options page.
 function profileOverview() {
   const p = profileStore.load();
-  return { text: p.text, updated: p.updated, defaults: profileStore.DEFAULT_PROFILE };
+  return { text: p.text, updated: p.updated,
+           defaults: profileStore.DEFAULT_PROFILE, examples: profileStore.EXAMPLES };
 }
 
 // Aggregate every effective configuration for the Options page.
