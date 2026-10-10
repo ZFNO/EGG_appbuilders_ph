@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EGG &middot; Get started</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <div class="brand" id="brand" data-title="EGG"></div>
+  <nav class="navbar" id="navbar" data-page="getstarted"></nav>
+  <a class="pill" id="runtime" href="configs.html" title="runtime &amp; services - open Options to configure">runtime: local &middot; mock services: SIMULATED</a>
+</header>
+<div class="wrap">
+  <section class="full gs-head">
+    <h2>Get started</h2>
+    <p class="gs-intro">Four guided steps from "what is this?" to "I've handled something". Each panel
+      shows exactly what Egg does with your words. The first three are automatic; the last one is where
+      <b>you</b> decide.</p>
+    <div class="gs-progress" aria-hidden="true"><i></i></div>
+  </section>
+
+  <section class="gs-step reveal">
+    <div class="gs-main">
+      <div class="gs-num">01</div>
+      <div class="gs-body">
+        <h3>Type one plain-language request</h3>
+        <p>No syntax, no menus. Write it the way you'd hand it to an assistant &mdash; one ask per message.</p>
+        <div class="tip">Tip: a <b>Capitalised name</b> after "with" / "to" / "for" names the party;
+          a <code>YYYY-MM-DD</code> date sets the deadline.</div>
+      </div>
+    </div>
+    <div class="demo" data-demo="type">
+      <div class="demo-input"><span class="prompt">&gt;</span><span class="typed" data-text="Follow up with Acme supplier - order #4471 not confirmed"></span><span class="caret"></span></div>
+      <div class="demo-out" data-out>
+        <span class="dchip">intent: follow_up</span>
+        <span class="dchip">party: Acme</span>
+        <span class="dchip">risk: R3</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="gs-step reveal">
+    <div class="gs-main">
+      <div class="gs-num">02</div>
+      <div class="gs-body">
+        <h3>Egg reads what matters</h3>
+        <p>It pulls out the intent, the party and any deadline, and scores how risky the job is
+          (R1 routine &rarr; R3 consequential).</p>
+        <div class="tip">Unsure? It comes back <b>needs clarification</b> rather than guessing.</div>
+      </div>
+    </div>
+    <div class="demo" data-demo="extract">
+      <div class="demo-line">Follow up with <mark>Acme</mark> supplier by <mark>2026-10-12</mark></div>
+      <ul class="demo-out" data-out>
+        <li class="dchip">party: Acme</li>
+        <li class="dchip">deadline: 2026-10-12</li>
+        <li class="dchip">intent: follow_up</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="gs-step reveal">
+    <div class="gs-main">
+      <div class="gs-num">03</div>
+      <div class="gs-body">
+        <h3>It routes to a capability</h3>
+        <p>The router hands the job to the one node that knows how to do it &mdash; a follow-up,
+          a schedule change, or a queue.</p>
+        <div class="tip">Low-risk routine work can run straight through; the risky kind stops at the gate.</div>
+      </div>
+    </div>
+    <div class="demo">
+      <div class="flow mini" aria-hidden="true">
+        <span class="flow-dot"></span>
+        <div class="flow-step"><span class="fi">?</span><span class="fl">Request</span></div>
+        <div class="flow-step"><span class="fi">R</span><span class="fl">Router</span></div>
+        <div class="flow-step"><span class="fi">N</span><span class="fl">Node</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="gs-step reveal">
+    <div class="gs-main">
+      <div class="gs-num">04</div>
+      <div class="gs-body">
+        <h3>You approve &mdash; then it acts</h3>
+        <p>Sending, paying, deleting or committing pauses here. You see the exact payload; approving
+          runs the node once, with that exact payload.</p>
+        <div class="tip">Change the payload and the old approval is void &mdash; a fresh yes is required.</div>
+      </div>
+    </div>
+    <div class="demo appr">
+      <div class="appr-card">
+        <div class="appr-top"><span class="dchip">send_message</span><span class="dchip">R3</span></div>
+        <div class="appr-msg">Hi Acme, quick follow-up on order #4471. Needed by 2026-10-12.</div>
+        <div class="appr-actions"><span class="appr-btn">Approve</span><span class="appr-btn ghost">Edit</span></div>
+      </div>
+      <div class="appr-stamp">APPROVED</div>
+    </div>
+  </section>
+
+  <section class="full ctaband">
+    <h2>That's the whole loop</h2>
+    <p class="note">Next: try it for real on the dashboard, or look any element up in the guide.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="index.html">Open the dashboard <span class="arw">&rarr;</span></a>
+      <a class="btn btn-ghost" href="guide.html">Element guide <span class="arw">&rarr;</span></a>
+    </div>
+  </section>
+</div>
+<script>
+document.documentElement.classList.add("js");
+</script>
+<script type="module">
+import "./nav.js";
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}, { threshold: 0.15 });
+document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+</script>
+<script type="module">
+import "./nav.js";
+
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}, { threshold: 0.2 });
+document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+// progress bar fills as you scroll through the walkthrough
+const bar = document.querySelector(".gs-progress i");
+const onScroll = () => {
+  const total = document.documentElement.scrollHeight - window.innerHeight;
+  const p = total > 0 ? Math.min(1, Math.max(0, window.scrollY / total)) : 0;
+  if (bar) bar.style.width = (p * 100).toFixed(1) + "%";
+};
+addEventListener("scroll", onScroll, { passive: true });
+addEventListener("resize", onScroll);
+onScroll();
+
+// step 1: type the request, then reveal what Egg read (loops while in view)
+const td = document.querySelector('[data-demo="type"]');
+if (td) {
+  const typed = td.querySelector(".typed");
+  const out = td.querySelector("[data-out]");
+  const text = typed.dataset.text || "";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const run = () => {
+    if (reduce) { typed.textContent = text; out.classList.add("show"); return; }
+    typed.textContent = ""; out.classList.remove("show");
+    let i = 0;
+    const tick = () => {
+      typed.textContent = text.slice(0, ++i);
+      if (i < text.length) setTimeout(tick, 32);
+      else setTimeout(() => out.classList.add("show"), 320);
+    };
+    setTimeout(tick, 250);
+  };
+  run();
+  setInterval(run, 5600);
+}
+
+// step 2: reveal the extracted fields when scrolled into view
+const ex = document.querySelector('[data-demo="extract"]');
+if (ex) {
+  const out = ex.querySelector("[data-out]");
+  new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) out.classList.add("show");
+  }, { threshold: 0.5 }).observe(ex);
+}
+</script>
+</body>
+</html>

@@ -154,7 +154,12 @@ class LlmEngine(modelFile: File) {
             feed["attention_mask"] =
                 longTensor(LongArray(total + 1) { 1L }, longArrayOf(1, (total + 1).toLong()))
             feed["position_ids"] = longTensor(longArrayOf(total.toLong()), longArrayOf(1, 1))
-            for (n in kvIn) feed[n] = p.get(n).get() as OnnxTensor
+            // The graph's KV outputs are named "present.{l}.{key,value}"; feed
+            // them back under the input names "past_key_values.{l}.{key,value}".
+            for (l in 0 until layers) {
+                feed["past_key_values.$l.key"] = p.get("present.$l.key").get() as OnnxTensor
+                feed["past_key_values.$l.value"] = p.get("present.$l.value").get() as OnnxTensor
+            }
             val res = session.run(feed, outNames)
             feed["input_ids"]!!.close()
             feed["attention_mask"]!!.close()

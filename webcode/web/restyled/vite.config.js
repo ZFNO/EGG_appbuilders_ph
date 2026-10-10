@@ -9,6 +9,10 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 const FRIENDLY = {
   "/": "index.html",
   "/index.html": "index.html",
+  "/home": "home.html",
+  "/home.html": "home.html",
+  "/getstarted": "getstarted.html",
+  "/getstarted.html": "getstarted.html",
   "/guide": "guide.html",
   "/guide.html": "guide.html",
   "/scope": "scope.html",
@@ -50,6 +54,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: path.resolve(root, "index.html"),
+        home: path.resolve(root, "home.html"),
+        getstarted: path.resolve(root, "getstarted.html"),
         guide: path.resolve(root, "guide.html"),
         scope: path.resolve(root, "scope.html"),
         routes: path.resolve(root, "routes.html"),

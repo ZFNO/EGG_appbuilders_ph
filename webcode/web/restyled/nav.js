@@ -3,15 +3,30 @@
 // Injected into <header> on every page so the brand and nav live in one place.
 // Each page carries a placeholder <div class="brand" id="brand" data-title="EGG">
 // and <nav class="navbar" id="navbar" data-page="...">; this module fills both.
-// On small screens the links collapse behind a hamburger toggle.
+//
+// The bar has two rows on desktop: the primary links, and a slim second row
+// (a tagline + quick links) that is hidden on small screens. On small screens
+// the primary links also collapse behind a hamburger toggle.
 
 const PAGES = [
+  { id: "home",      href: "home.html",   label: "Home" },
   { id: "dashboard", href: "index.html",  label: "Dashboard" },
   { id: "guide",     href: "guide.html",  label: "Element guide" },
   { id: "scope",     href: "scope.html",  label: "Scope" },
   { id: "routes",    href: "routes.html", label: "Routes" },
   { id: "options",   href: "configs.html", label: "Options" },
 ];
+
+// The desktop-only second row: a one-line tagline on the left, quick links on
+// the right. Kept out of the main links so the top row stays uncluttered.
+const SUB_TAGLINE = "One request in \u2014 the right action out.";
+const SUB_LINKS = [
+  { href: "home.html#how",   label: "How it works" },
+  { href: "getstarted.html", label: "Get started" },
+];
+
+// The layman's subtitle that sits under the EGG wordmark.
+const BRAND_SUB = "Your calm, tireless inbox secretary";
 
 export function renderNav(target) {
   target = target || (typeof document !== "undefined" && document.getElementById("navbar"));
@@ -44,6 +59,34 @@ export function renderNav(target) {
   target.textContent = "";
   target.appendChild(toggle);
   target.appendChild(links);
+
+  renderSubNav(target.parentElement, here);
+}
+
+// The desktop-only second row of the bar. Appended to the header so it rides
+// along on every page that uses this module; guarded so re-renders don't stack.
+export function renderSubNav(header, here) {
+  if (!header || header.querySelector(".navsub")) return;
+  const bar = document.createElement("div");
+  bar.className = "navsub";
+
+  const tag = document.createElement("span");
+  tag.className = "navsub-tag";
+  tag.textContent = SUB_TAGLINE;
+
+  const links = document.createElement("span");
+  links.className = "navsub-links";
+  for (const l of SUB_LINKS) {
+    const a = document.createElement("a");
+    a.href = l.href;
+    a.textContent = l.label;
+    if (here && l.href.split("#")[0] === here) a.classList.add("active");
+    links.appendChild(a);
+  }
+
+  bar.appendChild(tag);
+  bar.appendChild(links);
+  header.appendChild(bar);
 }
 
 // The EGG brand: an egg-shaped SVG mark + the wordmark, left of the title slot.
@@ -58,36 +101,15 @@ export function renderBrand() {
   const el = document.getElementById("brand");
   if (!el || el.dataset.done) return;
   const title = el.dataset.title || "EGG";
-  el.innerHTML = `<a class="brandlink" href="index.html" aria-label="${title} home">${EGG_SVG}<span class="eggword">${title}</span></a>`;
+  const sub = el.dataset.sub || BRAND_SUB;
+  el.innerHTML = `<a class="brandlink" href="home.html" aria-label="${title} home">${EGG_SVG}` +
+    `<span class="eggtext"><span class="eggword">${title}</span>` +
+    `<span class="eggsub">${sub}</span></span></a>`;
   el.dataset.done = "1";
 }
 
-// Status pills start collapsed (compact chips); tapping/clicking one expands
-// it to reveal the full text, and tapping again collapses it. Wired here so it
-// works on every page that carries a <span class="pill">.
-export function renderPills(root) {
-  const scope = root || (typeof document !== "undefined" && document);
-  if (!scope) return;
-  for (const pill of scope.querySelectorAll(".pill")) {
-    if (pill.dataset.pillWired) continue;
-    pill.dataset.pillWired = "1";
-    pill.setAttribute("role", "button");
-    pill.setAttribute("tabindex", "0");
-    pill.setAttribute("aria-expanded", "false");
-    if (!pill.title) pill.title = pill.textContent.trim();
-    const toggle = () => {
-      const open = pill.classList.toggle("expanded");
-      pill.setAttribute("aria-expanded", String(open));
-    };
-    pill.addEventListener("click", toggle);
-    pill.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
-    });
-  }
-}
-
 if (typeof document !== "undefined") {
-  const boot = () => { renderBrand(); renderNav(); renderPills(); };
+  const boot = () => { renderBrand(); renderNav(); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {

@@ -27,6 +27,10 @@ const TYPES = {
 const ROUTES = {
   "/": "index.html",
   "/index.html": "index.html",
+  "/home": "home.html",
+  "/home.html": "home.html",
+  "/getstarted": "getstarted.html",
+  "/getstarted.html": "getstarted.html",
   "/guide": "guide.html",
   "/guide.html": "guide.html",
   "/scope": "scope.html",

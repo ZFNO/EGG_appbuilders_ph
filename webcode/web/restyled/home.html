@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EGG &middot; Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <div class="brand" id="brand" data-title="EGG"></div>
+  <nav class="navbar" id="navbar" data-page="home"></nav>
+  <a class="pill" id="runtime" href="configs.html" title="runtime &amp; services - open Options to configure">runtime: local &middot; mock services: SIMULATED</a>
+</header>
+<div class="wrap">
+  <section class="hero">
+    <svg class="egg heroegg" viewBox="0 0 48 60" aria-hidden="true" focusable="false"><path class="shell" d="M24 3 C35 3 44 21 44 37 C44 51 35 58 24 58 C13 58 4 51 4 37 C4 21 13 3 24 3 Z"/><path class="shine" d="M17 20 C14 26 13.5 32 15 37"/></svg>
+    <h1>EGG</h1>
+    <div class="hero-sub">Your calm, tireless inbox secretary</div>
+    <p class="hero-pitch">Egg takes the <b>one thing</b> you need handled, works out what it is,
+      and does the safe part on its own. Anything that touches money, people or a promise
+      <b>stops and waits for your yes</b>. No commands to memorise &mdash; just plain words.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="getstarted.html">Get started <span class="arw">&rarr;</span></a>
+      <a class="btn btn-ghost" href="index.html">Open the dashboard <span class="arw">&rarr;</span></a>
+    </div>
+    <div class="flow" aria-hidden="true">
+      <span class="flow-dot"></span>
+      <div class="flow-step"><span class="fi">1</span><span class="fl">You ask</span></div>
+      <div class="flow-step"><span class="fi">2</span><span class="fl">It understands</span></div>
+      <div class="flow-step"><span class="fi">3</span><span class="fl">It routes</span></div>
+      <div class="flow-step"><span class="fi">4</span><span class="fl">You approve</span></div>
+    </div>
+  </section>
+
+  <section class="full" id="how">
+    <h2>How it works</h2>
+    <p class="note">Four small steps, every time. The first three are automatic; the last one is always yours.</p>
+    <div class="steps">
+      <div class="stepcard reveal" style="--d:.05s"><div class="sn">01</div><h3>Say what you need</h3>
+        <p>Type one request in plain language, the way you'd tell a colleague. One ask per message.</p></div>
+      <div class="stepcard reveal" style="--d:.15s"><div class="sn">02</div><h3>It reads the ask</h3>
+        <p>Egg works out the intent, who it's about and how risky it is. Too vague? It asks you to clarify instead of guessing.</p></div>
+      <div class="stepcard reveal" style="--d:.25s"><div class="sn">03</div><h3>It picks a capability</h3>
+        <p>Routine work is handed to the right capability &mdash; a small specialist that knows how to do just that job.</p></div>
+      <div class="stepcard reveal" style="--d:.35s"><div class="sn">04</div><h3>You stay in control</h3>
+        <p>Sending, paying, deleting or committing always pauses for a fresh approval, bound to the exact thing it will do.</p></div>
+    </div>
+  </section>
+
+  <section class="full">
+    <h2>The moving parts</h2>
+    <div class="parts">
+      <div class="part reveal"><h4>Router</h4><p>Reads your request and decides what kind of job it is and how risky.</p></div>
+      <div class="part reveal"><h4>Capability nodes</h4><p>Small specialists &mdash; follow-up, scheduling, routing &mdash; each does one job well.</p></div>
+      <div class="part reveal"><h4>Approval gate</h4><p>Anything consequential waits here until you say yes. Nothing irreversible happens on its own.</p></div>
+      <div class="part reveal"><h4>On-device model</h4><p>The only place a language model is used &mdash; and it can be switched off; the rules keep working.</p></div>
+      <div class="part reveal"><h4>Scope guard</h4><p>Payments, refunds, legal, hiring and deletions are refused up front, on purpose.</p></div>
+      <div class="part reveal"><h4>Activity log</h4><p>Every request and outcome is recorded, so you can always see what happened and why.</p></div>
+    </div>
+  </section>
+
+  <section class="full">
+    <h2>What it will &mdash; and won't &mdash; do</h2>
+    <div class="yesno">
+      <div class="yn yes reveal">
+        <h4>Will handle</h4>
+        <ul>
+          <li>Chase a supplier or a customer</li>
+          <li>Draft and, on approval, send a follow-up</li>
+          <li>Propose a schedule change</li>
+          <li>Route an incoming request to the right queue</li>
+        </ul>
+      </div>
+      <div class="yn no reveal">
+        <h4>Will not do</h4>
+        <ul>
+          <li>Pay or purchase anything</li>
+          <li>Delete or destroy data</li>
+          <li>Refund money</li>
+          <li>Make legal or hiring decisions</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="full ctaband">
+    <h2>Ready to hand it something?</h2>
+    <p class="note">It takes about a minute to see the whole loop.</p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="getstarted.html">Get started <span class="arw">&rarr;</span></a>
+      <a class="btn btn-ghost" href="scope.html">See what's out of scope <span class="arw">&rarr;</span></a>
+    </div>
+  </section>
+</div>
+<script>
+document.documentElement.classList.add("js");
+</script>
+<script type="module">
+import "./nav.js";
+const io = new IntersectionObserver((entries) => {
+  for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+}, { threshold: 0.15 });
+document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+</script>
+</body>
+</html>

@@ -10,7 +10,10 @@ const BASE = new URL('.', location.href).href; // app root inside the APK WebVie
 // ---- hard offline lock (zero network) --------------------------------------
 env.allowRemoteModels = false;
 env.allowLocalModels = true;
-env.localModelPath = BASE + 'models/';
+// transformers.js v4 treats a full URL here as remote-like and skips the local
+// file check (allowRemoteModels=false) -> tokenizer_config.json reported missing.
+// Use a PATH (resolved against the page origin by fetch), not a URL.
+env.localModelPath = new URL('models/', location.href).pathname; // '/assets/models/'
 env.useBrowserCache = false;
 
 const _fetch = globalThis.fetch;
