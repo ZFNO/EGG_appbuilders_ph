@@ -55,6 +55,10 @@ const STATIC = [
 const API = [
   { m: "GET",  p: "/api/config",  d: "&rarr; <b>200</b> every effective option (model, policy, scope, nodes, runtime, contracts)" },
   { m: "POST", p: "/api/config",  d: "Body is any subset of options &rarr; <b>200</b> saved; out-of-scope keywords route to <code>scopeStore</code>" },
+  { m: "GET",  p: "/api/profile", d: "Identity profile document + starter text &rarr; <b>200</b>" },
+  { m: "POST", p: "/api/profile", d: "Body {text} saved, then inferred &rarr; <b>200</b> {profile, inference}" },
+  { m: "POST", p: "/api/profile/infer", d: "Body {text} &rarr; <b>200</b> suggested options (rules, +model when the sidecar is up)" },
+  { m: "POST", p: "/api/profile/apply", d: "Body {suggestions} &rarr; <b>200</b> applied to config/scope, returns the overview" },
   { m: "GET",  p: "/api/scope",   d: "Scope config overview &rarr; <b>200</b> <code>scopeStore.overview()</code>" },
   { m: "POST", p: "/api/scope",   d: "Body <code>{ out_of_scope_keywords: [] }</code> &rarr; <b>200</b> saved; <b>400</b> if not a list" },
   { m: "POST", p: "/api/preview", d: "Body <code>{ text }</code> &rarr; <b>200</b> dry-run classification, no state change" },

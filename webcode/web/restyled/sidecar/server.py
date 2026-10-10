@@ -6,6 +6,7 @@ browser. The dashboard page calls it over http instead of running wasm.
 Endpoints (all JSON, CORS-open so the localhost page can call it):
     GET  /health                     -> {"ready": bool, "model": name, "model_dir": path, ...}
     POST /classify   {"text": "..."} -> {"status":"ok", "intent":..., "parameters":{...}, ...}
+    POST /infer_config {"text": "..."} -> {"status":"ok", "suggestions":{...}, "summary":..., ...}
     OPTIONS *                        -> 204 (CORS preflight)
 
 No network, no cloud fallback. The model dir is vendored under this project
@@ -56,6 +57,15 @@ class ModelHost:
         out["status"] = "ok"
         return out
 
+    def infer_config(self, text: str) -> dict:
+        """Read a plain-language identity profile -> suggested Options settings."""
+        if not self.adapter or not self.ready:
+            return {"status": "unavailable", "reason": self.error or "model not loaded"}
+        with self._lock:
+            out = self.adapter.infer_config(text)
+        out["status"] = "ok"
+        return out
+
     def health(self) -> dict:
         name = None
         if self.model_dir:
@@ -102,7 +112,8 @@ class Handler(BaseHTTPRequestHandler):
         return self._json(404, {"error": "not_found"})
 
     def do_POST(self):  # noqa: N802
-        if self.path.split("?")[0] != "/classify":
+        route = self.path.split("?")[0]
+        if route not in ("/classify", "/infer_config"):
             return self._json(404, {"error": "not_found"})
         try:
             n = int(self.headers.get("Content-Length") or 0)
@@ -112,8 +123,9 @@ class Handler(BaseHTTPRequestHandler):
         text = (body.get("text") or "").strip()
         if not text:
             return self._json(400, {"error": "empty_text"})
+        method = self.host.classify if route == "/classify" else self.host.infer_config
         try:
-            return self._json(200, self.host.classify(text))
+            return self._json(200, method(text))
         except Exception as exc:
             return self._json(500, {"status": "error",
                                     "reason": f"{type(exc).__name__}: {exc}"})

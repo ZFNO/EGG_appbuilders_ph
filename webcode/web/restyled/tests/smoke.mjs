@@ -92,3 +92,67 @@ test("fetch shim routes /api/* to the in-browser engine (no network)", async () 
   assert.ok(scope.data.out_of_scope_keywords.includes("pay"));
   assert.equal(scope.data.confidence_floor, 0.8);
 });
+
+test("identity profile: rules read the doc into suggested options", async () => {
+  const { infer, inferRules, DEFAULT_PROFILE } = await import("../profile_store.js");
+
+  const r = inferRules(DEFAULT_PROFILE);
+  assert.equal(r.suggestions.confidence_floor, 0.65);            // "move fast"
+  assert.deepEqual(r.suggestions.urgency_critical, ["pronto"]);  // quoted critical word
+  assert.ok(r.suggestions.urgency_high.includes("later today"));
+  assert.deepEqual(r.suggestions.out_of_scope_keywords, ["payroll", "refunds", "legal"]);
+  assert.ok(r.why.confidence_floor && r.why.confidence_floor.length > 0);
+
+  const cautious = inferRules("Be careful and always confirm with me before acting.");
+  assert.equal(cautious.suggestions.confidence_floor, 0.9);
+
+  const base = await infer(DEFAULT_PROFILE);
+  assert.equal(base.source, "rules");
+});
+
+test("identity profile: the model enhances, and falls back to rules on failure", async () => {
+  const { infer, DEFAULT_PROFILE } = await import("../profile_store.js");
+
+  const merged = await infer(DEFAULT_PROFILE, {
+    llm: async () => ({ suggestions: { confidence_floor: 0.5 }, summary: "from the model" }),
+  });
+  assert.equal(merged.source, "rules+model");
+  assert.equal(merged.suggestions.confidence_floor, 0.5);            // model wins
+  assert.ok(merged.suggestions.out_of_scope_keywords.includes("payroll")); // rules kept
+  assert.equal(merged.summary, "from the model");
+
+  const failed = await infer(DEFAULT_PROFILE, { llm: async () => { throw new Error("down"); } });
+  assert.equal(failed.source, "rules");
+  assert.ok(failed.notes.some((n) => /model unavailable/.test(n)));
+});
+
+test("identity profile: /api/profile saves, infers and applies (no network)", async () => {
+  const before = await api.handle("GET", "/api/config");
+  const floor0 = before.data.policy.confidence_floor;
+
+  const saved = await api.handle("POST", "/api/profile",
+    { text: "Move fast and stay hands-off. Never touch invoices." });
+  assert.equal(saved.status, 200);
+  assert.ok(saved.data.profile.updated);
+  assert.equal(saved.data.inference.source, "rules");
+  assert.equal(saved.data.inference.suggestions.confidence_floor, 0.65);
+  assert.deepEqual(saved.data.inference.suggestions.out_of_scope_keywords, ["invoices"]);
+
+  const applied = await api.handle("POST", "/api/profile/apply",
+    { suggestions: { confidence_floor: 0.65, out_of_scope_keywords: ["invoices"] } });
+  assert.equal(applied.status, 200);
+  assert.equal(applied.data.policy.confidence_floor, 0.65);
+  assert.ok(applied.data.scope.out_of_scope_keywords.includes("invoices"));
+  assert.ok(applied.data.scope.out_of_scope_keywords.includes("pay")); // merged, not replaced
+
+  // an applied out-of-scope word now rejects before routing
+  const ev = await api.engine.process("profrej", "Handle the invoices today");
+  assert.equal(ev.state, "rejected");
+
+  // restore
+  await api.handle("POST", "/api/config",
+    { confidence_floor: floor0, out_of_scope_keywords: before.data.defaults.out_of_scope_keywords });
+  await api.handle("POST", "/api/profile/clear");
+  const after = await api.handle("GET", "/api/config");
+  assert.equal(after.data.policy.confidence_floor, floor0);
+});

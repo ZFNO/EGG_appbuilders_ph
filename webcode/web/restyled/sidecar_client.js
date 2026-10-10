@@ -49,6 +49,20 @@ const backend = {
     }
     return out;
   },
+  // Ask the model to read a plain-language identity profile and propose
+  // Options settings. Same bounded contract: it only ever returns suggestions.
+  async infer_config(text) {
+    const r = await fetch(URL + "/infer_config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: text || "" }),
+    });
+    const out = await r.json();
+    if (!r.ok || out.status === "unavailable" || out.status === "error") {
+      throw new Error(out.reason || ("sidecar http " + r.status));
+    }
+    return out;
+  },
 };
 
 globalThis.__IS_ONNX_BACKEND__ = backend;
@@ -60,6 +74,15 @@ globalThis.__IS_SIDECAR_STATE__ = state;
 if (typeof window !== "undefined") {
   probe();
   setInterval(probe, 5000);
+}
+
+// A ready-to-use inference hook for profile_store.infer(): returns undefined
+// when the model is not available, so callers cleanly fall back to rules.
+export function profileLlm() {
+  if (backend.available() && typeof backend.infer_config === "function") {
+    return (text) => backend.infer_config(text);
+  }
+  return undefined;
 }
 
 export { URL as SIDECAR_URL, DEFAULT_MODEL, state as sidecarState, probe };

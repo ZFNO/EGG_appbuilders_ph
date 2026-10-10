@@ -604,3 +604,19 @@ a.brandlink:hover .egg{filter:drop-shadow(0 0 12px var(--accent-2));}
 @media (prefers-reduced-motion:reduce){
   .egg{animation:none;}
 }
+
+/* ---- identity profile (Options page) --------- */
+.doc{width:100%;min-height:130px;resize:vertical;background:var(--ink);
+  border:1px solid var(--line);border-left:3px solid var(--accent);color:var(--fg);
+  padding:12px;font-family:inherit;font-size:13px;line-height:1.55;outline:none;}
+.doc:focus{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);}
+.srow{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);
+  border-left:3px solid var(--accent-dk);padding:10px 12px;background:var(--panel-2);
+  margin-top:8px;cursor:pointer;}
+.srow:hover{border-left-color:var(--accent);}
+.srow input{margin-top:3px;accent-color:var(--accent);flex:none;width:auto;}
+.sbody{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.sk{font-family:"Oswald",sans-serif;font-weight:700;font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);}
+.sval{color:var(--fg);font-size:13px;overflow-wrap:anywhere;}
+.swhy{color:var(--muted);font-size:11.5px;font-style:italic;overflow-wrap:anywhere;}

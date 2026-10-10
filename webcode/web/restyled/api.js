@@ -8,14 +8,17 @@
 //   POST /api/route                         -> engine (via the bus)
 //   POST /api/preview                        -> engine.preview
 //   GET  /api/scope, POST /api/scope         -> scope_store
+//   GET  /api/config, POST /api/config        -> config_store (+ scope_store)
+//   GET  /api/profile, POST /api/profile{,/infer,/apply} -> profile_store
 //   POST /api/approvals/{id}/{approve|reject}-> engine (via the bus)
 //   GET  /api/activity, /api/nodes, /api/model, /api/jobs/{id}
 
-import "./sidecar_client.js"; // installs globalThis.__IS_ONNX_BACKEND__ + status
+import { profileLlm } from "./sidecar_client.js"; // installs globalThis.__IS_ONNX_BACKEND__ + status
 import { Message } from "./bus.js";
 import { buildRuntime, startWorkers } from "./runtime.js";
 import * as scopeStore from "./scope_store.js";
 import * as configStore from "./config_store.js";
+import * as profileStore from "./profile_store.js";
 
 // One shared runtime for the page lifetime, assembled from the saved Options.
 const config = configStore.load();
@@ -125,7 +128,36 @@ export async function handle(method, path, body) {
     configStore.save(editable);
     return { status: 200, data: await configOverview() };
   }
+  // --- identity profile: a plain-language doc the model reads to suggest options ---
+  if (m === "GET" && p === "/api/profile") {
+    return { status: 200, data: profileOverview() };
+  }
+  if (m === "POST" && p === "/api/profile") {
+    const text = typeof body.text === "string" ? body.text : "";
+    const saved = profileStore.save(text);
+    const inference = await profileStore.infer(saved.text, { llm: profileLlm() });
+    return { status: 200, data: { profile: saved, inference } };
+  }
+  if (m === "POST" && p === "/api/profile/infer") {
+    const text = typeof body.text === "string" ? body.text : profileStore.load().text;
+    return { status: 200, data: await profileStore.infer(text, { llm: profileLlm() }) };
+  }
+  if (m === "POST" && p === "/api/profile/apply") {
+    const suggestions = (body && body.suggestions) ? body.suggestions : (body || {});
+    profileStore.apply(suggestions);
+    return { status: 200, data: await configOverview() };
+  }
+  if (m === "POST" && p === "/api/profile/clear") {
+    profileStore.clear();
+    return { status: 200, data: profileOverview() };
+  }
   return { status: 404, data: { error: "not_found" } };
+}
+
+// The identity profile document + the starter text, for the Options page.
+function profileOverview() {
+  const p = profileStore.load();
+  return { text: p.text, updated: p.updated, defaults: profileStore.DEFAULT_PROFILE };
 }
 
 // Aggregate every effective configuration for the Options page.

@@ -19,6 +19,32 @@
 
 <div class="wrap">
   <section class="full">
+    <h2>Identity profile <span class="badge live">model</span></h2>
+    <p class="note">Describe yourself and your work in plain words. The model reads it and
+      suggests settings below. Nothing changes until you apply it.</p>
+    <textarea id="profile" class="doc" spellcheck="true"
+      placeholder="Write a few lines about who you are and how you like to work..."></textarea>
+    <div class="bar">
+      <button onclick="saveProfile()">Save &amp; read</button>
+      <button class="ghost" onclick="inferProfile()">Read profile</button>
+      <button class="ghost" onclick="resetProfile()">Use example</button>
+      <span class="save-state" id="profilestate"></span>
+    </div>
+    <p class="note">Tip: mention words you use for urgency, and anything the assistant should never touch.</p>
+  </section>
+
+  <section class="full" id="suggestBox" hidden>
+    <h2>Suggested from your profile <span class="badge live" id="srcBadge">rules</span></h2>
+    <p class="note" id="suggestSummary"></p>
+    <div id="suggestRows"></div>
+    <div id="suggestNotes"></div>
+    <div class="bar">
+      <button onclick="applySuggestions()">Apply selected</button>
+      <span class="save-state" id="applystate"></span>
+    </div>
+  </section>
+
+  <section class="full">
     <h2>Options &mdash; every configurable part in one place</h2>
     <p class="note">Edit below, then save. Each badge shows when the change applies:
       <span class="badge live">live</span> right away, <span class="badge reload">reload</span> after refresh,
@@ -276,7 +302,91 @@ $('#confidence_floor').addEventListener('input', e => { STATE.confidence_floor =
 $('#workers').addEventListener('input', e => { STATE.workers = Number(e.target.value); markDirty(); });
 $('#bus_maxsize').addEventListener('input', e => { STATE.bus_maxsize = Number(e.target.value); markDirty(); });
 
-Object.assign(window, { load, saveConfig, resetConfig });
+// ---- identity profile ------------------------------------------------
+let PROFILE_SUG = null;
+const LABELS = {
+  use_model: "Model / LLM", model: "Model id", confidence_floor: "Confidence floor",
+  urgency_critical: "Urgency: critical", urgency_high: "Urgency: high",
+  out_of_scope_keywords: "Scope: rejected",
+};
+
+function fmtVal(v){
+  if (Array.isArray(v)) return v.join(", ") || "none";
+  if (typeof v === "boolean") return v ? "on" : "off";
+  return String(v);
+}
+function currentValue(k){
+  if (k === "use_model") return STATE.use_model ? "on" : "off";
+  if (k === "confidence_floor") return String(STATE.confidence_floor);
+  if (k === "urgency_critical") return fmtVal(STATE.urgency_critical);
+  if (k === "urgency_high") return fmtVal(STATE.urgency_high);
+  if (k === "out_of_scope_keywords") return fmtVal(OOS);
+  if (k === "model") return STATE.model || "(auto)";
+  return "";
+}
+
+async function loadProfile(){
+  const o = await get("/api/profile");
+  $("#profile").value = o.text;
+  const st = $("#profilestate");
+  st.className = "save-state";
+  st.textContent = o.updated ? ("saved " + o.updated) : "example shown (not saved)";
+}
+
+function renderSuggestions(inf){
+  PROFILE_SUG = inf.suggestions || {};
+  $("#suggestBox").hidden = false;
+  $("#srcBadge").textContent = inf.source;
+  $("#suggestSummary").textContent = inf.summary ? ("\u201c" + inf.summary + "\u201d") : "";
+  const keys = Object.keys(PROFILE_SUG);
+  $("#suggestRows").innerHTML = keys.length
+    ? keys.map(k => {
+        const why = inf.why && inf.why[k] ? esc(inf.why[k]) : "";
+        return `<label class="srow"><input type="checkbox" data-k="${k}" checked>
+          <span class="sbody"><span class="sk">${esc(LABELS[k] || k)}</span>
+          <span class="sval">${esc(currentValue(k))} &rarr; <b>${esc(fmtVal(PROFILE_SUG[k]))}</b></span>
+          ${why ? `<span class="swhy">because: ${why}</span>` : ""}</span></label>`;
+      }).join("")
+    : '<p class="note">No settings to suggest yet &mdash; add more detail to your profile.</p>';
+  $("#suggestNotes").innerHTML = (inf.notes && inf.notes.length)
+    ? inf.notes.map(n => `<div class="muted">note: ${esc(n)}</div>`).join("") : "";
+}
+
+async function saveProfile(){
+  const o = await post("/api/profile", { text: $("#profile").value });
+  const st = $("#profilestate");
+  st.className = "save-state ok";
+  st.textContent = "saved " + o.profile.updated;
+  renderSuggestions(o.inference);
+}
+
+async function inferProfile(){
+  const inf = await post("/api/profile/infer", { text: $("#profile").value });
+  renderSuggestions(inf);
+}
+
+async function resetProfile(){
+  const o = await get("/api/profile");
+  $("#profile").value = o.defaults;
+  await inferProfile();
+}
+
+async function applySuggestions(){
+  const picked = {};
+  document.querySelectorAll("#suggestRows input[type=checkbox]:checked").forEach(c => {
+    picked[c.dataset.k] = PROFILE_SUG[c.dataset.k];
+  });
+  const st = $("#applystate");
+  if (!Object.keys(picked).length){ st.className = "save-state err"; st.textContent = "nothing selected"; return; }
+  await post("/api/profile/apply", { suggestions: picked });
+  await load();
+  st.className = "save-state ok";
+  st.textContent = "applied " + Object.keys(picked).length + " setting(s)";
+}
+
+Object.assign(window, { load, saveConfig, resetConfig,
+  loadProfile, saveProfile, inferProfile, resetProfile, applySuggestions });
+loadProfile();
 load();
 </script>
 </body>

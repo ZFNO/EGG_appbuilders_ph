@@ -26,6 +26,13 @@ _SYS = ("You are a routing classifier. Read the business request and reply with 
         ">, \"topic\": <short phrase>, \"entity_name\": <name or null>, "
         "\"deadline\": <YYYY-MM-DD or null>}. No prose.")
 
+# Reads a person's plain-language identity profile and proposes Options settings.
+_SYS_PROFILE = ("You read a short description of how a person likes their assistant to work "
+                "and reply with ONLY a JSON object: {\"confidence_floor\": <0..1>, "
+                "\"use_model\": <true|false>, \"urgency_critical\": [<words>], "
+                "\"urgency_high\": [<words>], \"out_of_scope_keywords\": [<words>], "
+                "\"summary\": <one short line>}. Suggest values only. No prose.")
+
 # sidecar/ -> restyled/ ; models are vendored at <restyled>/models
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODELS_ROOT = PROJECT_ROOT / "models"
@@ -180,3 +187,28 @@ class QwenOnnxAdapter:
         return {"intent": obj["intent"], "parameters": params, "confidence": 0.9,
                 "urgency_hint": "normal", "model_used": self.name,
                 "latency_s": self.last_latency_s}
+
+    @staticmethod
+    def _parse_json(raw: str) -> dict | None:
+        m = re.search(r"\{.*\}", raw, re.S)
+        if not m:
+            return None
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            return None
+
+    # Read a plain-language profile -> proposed Options settings (suggestions only).
+    def infer_config(self, text: str) -> dict:
+        raw = self._generate([{"role": "system", "content": _SYS_PROFILE},
+                              {"role": "user", "content": text}])
+        obj = self._parse_json(raw)
+        if obj is None:
+            return {"suggestions": {}, "summary": None,
+                    "notes": ["model returned no JSON"], "raw": raw[:200],
+                    "latency_s": self.last_latency_s}
+        keys = ("use_model", "model", "confidence_floor", "urgency_critical",
+                "urgency_high", "out_of_scope_keywords")
+        sug = {k: obj.get(k) for k in keys if obj.get(k) is not None}
+        return {"suggestions": sug, "summary": obj.get("summary"),
+                "notes": ["read by " + self.name], "latency_s": self.last_latency_s}
