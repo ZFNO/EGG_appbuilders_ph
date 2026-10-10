@@ -186,7 +186,8 @@ async function renderModel(){
   try{
     const m = await fetch("/api/model").then(r=>r.json());
     const loaded = m.mode === "rules+model";
-    el.className = "pill " + (loaded ? "st-ok" : "st-off");
+    el.classList.remove("st-ok", "st-off", "st-bad");
+    el.classList.add(loaded ? "st-ok" : "st-off");
     el.textContent = loaded
       ? ("qwen model: " + (m.model || "local") + " - loaded")
       : "qwen model: not loaded (rules-only)";
@@ -194,7 +195,8 @@ async function renderModel(){
       ? ("model: " + (m.model || "local") + (m.path ? "  @ " + m.path : ""))
       : (m.reason || "no local model found");
   }catch(e){
-    el.className = "pill st-bad";
+    el.classList.remove("st-ok", "st-off");
+    el.classList.add("st-bad");
     el.textContent = "qwen model: error";
     el.title = String((e && e.message) || e);
   }
