@@ -20,10 +20,9 @@
 <div class="wrap">
   <section class="full">
     <h2>Options &mdash; every configurable part in one place</h2>
-    <p class="note">Everything the runtime reads is listed below with its <b>current value</b>. Fields marked
-      <span class="badge live">live</span> take effect on the next request, <span class="badge reload">reload</span>
-      fields apply when the page is reloaded, and <span class="badge ro">read-only</span> entries are fixed policy
-      (shown for reference). Saved to <code>data/config.json</code> in this browser.</p>
+    <p class="note">Change anything you like below and press Save &mdash; the badge on each setting tells you when it
+      starts working (<span class="badge live">live</span> right away, <span class="badge reload">reload</span> after a
+      refresh, <span class="badge ro">read-only</span> can't be changed). Your choices are remembered in this browser.</p>
     <div class="bar">
       <button id="save" onclick="saveConfig()" disabled>Save changes</button>
       <button class="ghost" onclick="resetConfig()">Reset to defaults</button>
@@ -38,17 +37,17 @@
       <div class="field">
         <label>Runtime mode</label>
         <label class="check"><input type="checkbox" id="use_model"> Use the on-device model (else rules only)</label>
-        <span class="hint">Rules always run; the model only <i>enhances</i> classification. Never a cloud fallback.</span>
+        <span class="hint">Turn the built-in helper on or off &mdash; it only helps sort requests and never sends anything to the internet.</span>
       </div>
       <div class="field">
         <label>Model id / path (optional)</label>
         <input type="text" id="model" placeholder="(auto) leave blank to auto-select">
-        <span class="hint">Blank auto-selects the canonical model.</span>
+        <span class="hint">The name of the helper brain to load &mdash; leave it blank and we pick the right one for you.</span>
       </div>
       <div class="field">
         <label>Sidecar URL</label>
         <input type="text" id="sidecar_url" placeholder="http://127.0.0.1:8765" autocomplete="off">
-        <span class="hint">Localhost Python sidecar hosting the weights out-of-process.</span>
+        <span class="hint">The address of the helper brain on this computer &mdash; you can usually leave this as it is.</span>
       </div>
     </div>
     <div class="editor" id="modelPanel"></div>
@@ -60,22 +59,22 @@
       <div class="field">
         <label>Confidence floor <span class="badge live">live</span></label>
         <input type="number" id="confidence_floor" min="0" max="1" step="0.01">
-        <span class="hint">Below this the router asks to clarify instead of guessing (0&ndash;1).</span>
+        <span class="hint">How sure it must be before acting on its own &mdash; a higher number means it checks with you more often.</span>
       </div>
       <div class="field">
         <label>Workers <span class="badge reload">reload</span></label>
         <input type="number" id="workers" min="1" step="1">
-        <span class="hint">Worker tasks consuming the bus.</span>
+        <span class="hint">How many requests can be worked on at the same time.</span>
       </div>
       <div class="field">
         <label>Bus size <span class="badge reload">reload</span></label>
         <input type="number" id="bus_maxsize" min="1" step="1">
-        <span class="hint">Bounded queue depth (backpressure above it).</span>
+        <span class="hint">How many requests can wait in line before new ones are told to slow down.</span>
       </div>
       <div class="field">
         <label>Server port <span class="badge ro">read-only</span></label>
         <input type="text" id="server_port" disabled>
-        <span class="hint">Where this page is served (serve.mjs / vite).</span>
+        <span class="hint">The address this page is served from &mdash; shown for reference only.</span>
       </div>
     </div>
   </section>
@@ -83,32 +82,36 @@
   <section class="full">
     <h2>Urgency keywords <span class="badge live">live</span></h2>
     <div class="cfg-grid">
-      <div class="field"><label>Critical &mdash; explicit immediacy</label><div class="editor" id="ed_critical"></div></div>
-      <div class="field"><label>High &mdash; same-day / urgent</label><div class="editor" id="ed_high"></div></div>
+      <div class="field"><label>Critical &mdash; explicit immediacy</label><div class="editor" id="ed_critical"></div>
+        <span class="hint">If a request contains any of these words, treat it as needing action right now.</span></div>
+      <div class="field"><label>High &mdash; same-day / urgent</label><div class="editor" id="ed_high"></div>
+        <span class="hint">If a request contains any of these words, treat it as urgent for today.</span></div>
     </div>
-    <p class="note">Urgency is computed from these rules only &mdash; never from model confidence. High urgency never bypasses authorization.</p>
+    <p class="note">Urgency comes only from these words, never from the helper brain, and being urgent never skips a safety check.</p>
   </section>
 
   <section class="full">
     <h2>Scope &mdash; rejected keywords <span class="badge live">live</span></h2>
-    <p class="note">If any of these appears in the text the request is <b>rejected</b> before routing. Shared with the
-      <a class="nav" href="scope.html">scope page</a>.</p>
+    <p class="note">If a request contains any of these words, it is refused before anything else happens
+      (the same list is on the <a class="nav" href="scope.html">scope page</a>).</p>
     <div class="editor" id="ed_oos"></div>
   </section>
 
   <section class="full">
     <h2>Intent &rarr; node allow-list <span class="badge ro">read-only</span></h2>
-    <p class="note">Free text maps to an intent; the intent maps to <b>one</b> node via a fixed allow-list. Fixed policy.</p>
+    <p class="note">This fixed list shows what each kind of request is allowed to do &mdash; shown for reference only.</p>
     <div id="allowlist"></div>
   </section>
 
   <section class="full">
     <h2>Nodes <span class="badge ro">read-only</span></h2>
+    <p class="note">These are the jobs the system can carry out.</p>
     <div id="nodes"></div>
   </section>
 
   <section class="full">
     <h2>Contracts <span class="badge ro">read-only</span></h2>
+    <p class="note">These are the fixed names and rules the system works to &mdash; shown for reference only.</p>
     <div class="cfg-grid" id="contracts"></div>
   </section>
 </div>
