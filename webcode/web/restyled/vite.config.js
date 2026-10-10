@@ -15,6 +15,9 @@ const FRIENDLY = {
   "/scope.html": "scope.html",
   "/routes": "routes.html",
   "/routes.html": "routes.html",
+  "/options": "configs.html",
+  "/configs": "configs.html",
+  "/configs.html": "configs.html",
 };
 
 function friendlyRoutes() {
@@ -50,6 +53,7 @@ export default defineConfig({
         guide: path.resolve(root, "guide.html"),
         scope: path.resolve(root, "scope.html"),
         routes: path.resolve(root, "routes.html"),
+        options: path.resolve(root, "configs.html"),
       },
     },
   },

@@ -9,7 +9,10 @@
 // Contract (same as the Python adapter): { available(): bool, classify(text): dict }
 // classify is ASYNC here (network) - the model path is awaited end-to-end.
 
-const URL = String(globalThis.IS_SIDECAR_URL || "http://127.0.0.1:8765").replace(/\/+$/, "");
+import * as configStore from "./config_store.js";
+
+const _cfg = configStore.load();
+const URL = String(globalThis.IS_SIDECAR_URL || _cfg.sidecar_url || "http://127.0.0.1:8765").replace(/\/+$/, "");
 const DEFAULT_MODEL = "Qwen2.5-0.5B-Instruct";
 
 // Live status, read synchronously by available() / the status indicator.
@@ -32,7 +35,7 @@ async function probe() {
 const backend = {
   get name() { return "qwen2.5-0.5b-onnx"; },
   // a stable, human-readable model dir name for describe()
-  get model_path() { return state.model || DEFAULT_MODEL; },
+  get model_path() { return state.model || _cfg.model || DEFAULT_MODEL; },
   available() { return state.ready; },
   async classify(text) {
     const r = await fetch(URL + "/classify", {

@@ -9,6 +9,7 @@ import {
   Intent, RiskLevel, ValidationError, INTENT_TO_NODE, ALLOWED_NODES,
   decisionToDict, validateDecision,
 } from "./schemas.js";
+import * as configStore from "./config_store.js";
 
 export const CONFIDENCE_FLOOR = 0.80; // below this -> clarify, never guess
 
@@ -33,17 +34,30 @@ const INTENT_VALUES = new Set(Object.values(Intent));
 export class Router {
   constructor(model, opts = {}) {
     this.model = model;
-    this.confidence_floor = opts.confidenceFloor === undefined ? CONFIDENCE_FLOOR : opts.confidenceFloor;
+    this._floorOverride = opts.confidenceFloor;
     this.audit = [];
+  }
+
+  // Effective confidence floor: read live from the Options config on every
+  // request, unless a caller pinned one explicitly at construction.
+  get confidence_floor() {
+    return this._floorOverride === undefined
+      ? configStore.load().confidence_floor
+      : this._floorOverride;
   }
 
   // -- policy helpers -------------------------------------------------
   static _urgency(text, hint) {
     const t = (text || "").toLowerCase();
-    if (["immediately", "asap", "as soon as possible"].some((k) => t.includes(k))) {
+    const cfg = configStore.load();
+    const crit = (cfg.urgency_critical && cfg.urgency_critical.length)
+      ? cfg.urgency_critical : ["immediately", "asap", "as soon as possible"];
+    const high = (cfg.urgency_high && cfg.urgency_high.length)
+      ? cfg.urgency_high : ["today", "urgent", "overdue", "late"];
+    if (crit.some((k) => t.includes(k))) {
       return ["critical", "explicit immediacy signal"];
     }
-    if (["today", "urgent", "overdue", "late"].some((k) => t.includes(k))) {
+    if (high.some((k) => t.includes(k))) {
       return ["high", "same-day / urgent signal"];
     }
     if (hint === "high") {

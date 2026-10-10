@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Invisible Secretary &middot; Routes</title>
+<title>EGG &middot; Routes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
@@ -12,7 +12,7 @@
 </head>
 <body>
 <header>
-  <h1>Invisible Secretary &middot; Routes</h1>
+  <div class="brand" id="brand" data-title="EGG"></div>
   <nav class="navbar" id="navbar" data-page="routes"></nav>
   <span class="pill" id="runtime">no backend &middot; fetch shim intercepts /api/*</span>
 </header>
@@ -46,12 +46,15 @@ const STATIC = [
   { m: "GET", p: "/guide, /guide.html",   d: "Element guide page (<b>guide.html</b>)" },
   { m: "GET", p: "/scope, /scope.html",   d: "Scope config page (<b>scope.html</b>)" },
   { m: "GET", p: "/routes, /routes.html", d: "This page (<b>routes.html</b>)" },
+  { m: "GET", p: "/options, /configs", d: "Options config page (<b>configs.html</b>)" },
   { m: "GET", p: "/assets/app.css", d: "Shared stylesheet" },
   { m: "GET", p: "/&lt;any file&gt;", d: "Any existing file under <code>webcode/web/local/</code>" },
   { m: "GET", p: "/api/*", d: "501 &mdash; server refusing; means the shim was not loaded" },
 ];
 
 const API = [
+  { m: "GET",  p: "/api/config",  d: "&rarr; <b>200</b> every effective option (model, policy, scope, nodes, runtime, contracts)" },
+  { m: "POST", p: "/api/config",  d: "Body is any subset of options &rarr; <b>200</b> saved; out-of-scope keywords route to <code>scopeStore</code>" },
   { m: "GET",  p: "/api/scope",   d: "Scope config overview &rarr; <b>200</b> <code>scopeStore.overview()</code>" },
   { m: "POST", p: "/api/scope",   d: "Body <code>{ out_of_scope_keywords: [] }</code> &rarr; <b>200</b> saved; <b>400</b> if not a list" },
   { m: "POST", p: "/api/preview", d: "Body <code>{ text }</code> &rarr; <b>200</b> dry-run classification, no state change" },

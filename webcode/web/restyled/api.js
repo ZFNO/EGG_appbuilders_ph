@@ -15,10 +15,14 @@ import "./sidecar_client.js"; // installs globalThis.__IS_ONNX_BACKEND__ + statu
 import { Message } from "./bus.js";
 import { buildRuntime, startWorkers } from "./runtime.js";
 import * as scopeStore from "./scope_store.js";
+import * as configStore from "./config_store.js";
 
-// One shared runtime for the page lifetime.
-const { bus, ctx, engine } = buildRuntime({ useModel: true });
-startWorkers(bus, ctx, { workers: 1 });
+// One shared runtime for the page lifetime, assembled from the saved Options.
+const config = configStore.load();
+const { bus, ctx, engine } = buildRuntime({
+  useModel: config.use_model, model: config.model, maxsize: config.bus_maxsize,
+});
+startWorkers(bus, ctx, { workers: config.workers });
 
 const UUID = () => {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -102,7 +106,95 @@ export async function handle(method, path, body) {
     if (!ev) return { status: 404, data: { detail: "unknown job" } };
     return { status: 200, data: ev.toDict() };
   }
+  if (m === "GET" && p === "/api/config") {
+    return { status: 200, data: await configOverview() };
+  }
+  if (m === "POST" && p === "/api/config") {
+    const b = body || {};
+    if (Object.prototype.hasOwnProperty.call(b, "out_of_scope_keywords")) {
+      if (!Array.isArray(b.out_of_scope_keywords)) {
+        return { status: 400, data: { error: "out_of_scope_keywords must be a list" } };
+      }
+      scopeStore.save(b.out_of_scope_keywords);
+    }
+    const editable = {};
+    for (const k of ["use_model","model","sidecar_url","confidence_floor",
+                     "urgency_critical","urgency_high","workers","bus_maxsize"]) {
+      if (Object.prototype.hasOwnProperty.call(b, k)) editable[k] = b[k];
+    }
+    configStore.save(editable);
+    return { status: 200, data: await configOverview() };
+  }
   return { status: 404, data: { error: "not_found" } };
+}
+
+// Aggregate every effective configuration for the Options page.
+async function configOverview() {
+  const [router, nodesMod, schemas] = await Promise.all([
+    import("./router.js"),
+    import("./nodes.js"),
+    import("./schemas.js"),
+  ]);
+  const cfg = configStore.load();
+  const scope = scopeStore.load();
+  const describe = engine.router && engine.router.model && engine.router.model.describe
+    ? engine.router.model.describe() : {};
+  const side = (typeof globalThis !== "undefined" && globalThis.__IS_SIDECAR_STATE__) || null;
+
+  let nodes = {};
+  try { nodes = nodesMod.defaultNodes(); } catch (e) { nodes = {}; }
+  const nodeList = Object.values(nodes).map((n) => ({
+    node: n.name,
+    description: n.description || "",
+    action: n.consequential_action || null,
+    health: typeof n.health === "function" ? (n.health().health || "ok") : "ok",
+  }));
+
+  const d = configStore.defaults();
+  return {
+    updated: cfg.updated,
+    model: {
+      use_model: cfg.use_model,
+      model: cfg.model,
+      sidecar_url: cfg.sidecar_url,
+      described: describe,
+      sidecar: side
+        ? { ready: !!side.ready, model: side.model || null, error: side.error || null, url: side.url || cfg.sidecar_url }
+        : null,
+    },
+    policy: {
+      confidence_floor: cfg.confidence_floor,
+      urgency_critical: cfg.urgency_critical,
+      urgency_high: cfg.urgency_high,
+      intent_to_node: { ...schemas.INTENT_TO_NODE },
+      allowed_nodes: [...schemas.ALLOWED_NODES],
+      required_params: { ...router.REQUIRED_PARAMS },
+      action_risk: { ...router.ACTION_RISK },
+    },
+    scope: {
+      out_of_scope_keywords: scope.out_of_scope_keywords,
+      updated: scope.updated === undefined ? null : scope.updated,
+    },
+    nodes: nodeList,
+    runtime: {
+      workers: cfg.workers,
+      bus_maxsize: cfg.bus_maxsize,
+      bus_size: typeof bus.qsize === "function" ? bus.qsize() : null,
+    },
+    contracts: {
+      intents: Object.values(schemas.Intent),
+      nodes: Object.values(schemas.NodeName),
+      urgency: Object.values(schemas.Urgency),
+      risk_levels: Object.values(schemas.RiskLevel),
+      statuses: Object.values(schemas.Status),
+    },
+    defaults: {
+      use_model: d.use_model, model: d.model, sidecar_url: d.sidecar_url,
+      confidence_floor: d.confidence_floor, urgency_critical: d.urgency_critical,
+      urgency_high: d.urgency_high, workers: d.workers, bus_maxsize: d.bus_maxsize,
+      out_of_scope_keywords: scopeStore.DEFAULT_OUT_OF_SCOPE,
+    },
+  };
 }
 
 // A Response-like object good enough for the pages' `.json()` usage.

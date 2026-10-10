@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EGG &middot; Options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/theme.css">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<header>
+  <div class="brand" id="brand" data-title="EGG"></div>
+  <nav class="navbar" id="navbar" data-page="options"></nav>
+  <span class="pill" id="runtime">options: live &middot; edits persist to data/config.json</span>
+</header>
+
+<div class="wrap">
+  <section class="full">
+    <h2>Options &mdash; every configurable part in one place</h2>
+    <p class="note">Everything the runtime reads is listed below with its <b>current value</b>. Fields marked
+      <span class="badge live">live</span> take effect on the next request, <span class="badge reload">reload</span>
+      fields apply when the page is reloaded, and <span class="badge ro">read-only</span> entries are fixed policy
+      (shown for reference). Saved to <code>data/config.json</code> in this browser.</p>
+    <div class="bar">
+      <button id="save" onclick="saveConfig()" disabled>Save changes</button>
+      <button class="ghost" onclick="resetConfig()">Reset to defaults</button>
+      <button class="ghost" onclick="load()">Reload</button>
+      <span class="save-state" id="savestate"></span>
+    </div>
+  </section>
+
+  <section class="full">
+    <h2>Model / LLM <span class="badge reload">reload</span></h2>
+    <div class="cfg-grid">
+      <div class="field">
+        <label>Runtime mode</label>
+        <label class="check"><input type="checkbox" id="use_model"> Use the on-device model (else rules only)</label>
+        <span class="hint">Rules always run; the model only <i>enhances</i> classification. Never a cloud fallback.</span>
+      </div>
+      <div class="field">
+        <label>Model id / path (optional)</label>
+        <input type="text" id="model" placeholder="(auto) leave blank to auto-select">
+        <span class="hint">Blank auto-selects the canonical model.</span>
+      </div>
+      <div class="field">
+        <label>Sidecar URL</label>
+        <input type="text" id="sidecar_url" placeholder="http://127.0.0.1:8765" autocomplete="off">
+        <span class="hint">Localhost Python sidecar hosting the weights out-of-process.</span>
+      </div>
+    </div>
+    <div class="editor" id="modelPanel"></div>
+  </section>
+
+  <section class="full">
+    <h2>Routing policy</h2>
+    <div class="cfg-grid">
+      <div class="field">
+        <label>Confidence floor <span class="badge live">live</span></label>
+        <input type="number" id="confidence_floor" min="0" max="1" step="0.01">
+        <span class="hint">Below this the router asks to clarify instead of guessing (0&ndash;1).</span>
+      </div>
+      <div class="field">
+        <label>Workers <span class="badge reload">reload</span></label>
+        <input type="number" id="workers" min="1" step="1">
+        <span class="hint">Worker tasks consuming the bus.</span>
+      </div>
+      <div class="field">
+        <label>Bus size <span class="badge reload">reload</span></label>
+        <input type="number" id="bus_maxsize" min="1" step="1">
+        <span class="hint">Bounded queue depth (backpressure above it).</span>
+      </div>
+      <div class="field">
+        <label>Server port <span class="badge ro">read-only</span></label>
+        <input type="text" id="server_port" disabled>
+        <span class="hint">Where this page is served (serve.mjs / vite).</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="full">
+    <h2>Urgency keywords <span class="badge live">live</span></h2>
+    <div class="cfg-grid">
+      <div class="field"><label>Critical &mdash; explicit immediacy</label><div class="editor" id="ed_critical"></div></div>
+      <div class="field"><label>High &mdash; same-day / urgent</label><div class="editor" id="ed_high"></div></div>
+    </div>
+    <p class="note">Urgency is computed from these rules only &mdash; never from model confidence. High urgency never bypasses authorization.</p>
+  </section>
+
+  <section class="full">
+    <h2>Scope &mdash; rejected keywords <span class="badge live">live</span></h2>
+    <p class="note">If any of these appears in the text the request is <b>rejected</b> before routing. Shared with the
+      <a class="nav" href="scope.html">scope page</a>.</p>
+    <div class="editor" id="ed_oos"></div>
+  </section>
+
+  <section class="full">
+    <h2>Intent &rarr; node allow-list <span class="badge ro">read-only</span></h2>
+    <p class="note">Free text maps to an intent; the intent maps to <b>one</b> node via a fixed allow-list. Fixed policy.</p>
+    <div id="allowlist"></div>
+  </section>
+
+  <section class="full">
+    <h2>Nodes <span class="badge ro">read-only</span></h2>
+    <div id="nodes"></div>
+  </section>
+
+  <section class="full">
+    <h2>Contracts <span class="badge ro">read-only</span></h2>
+    <div class="cfg-grid" id="contracts"></div>
+  </section>
+</div>
+
+<script type="module">
+import "./api.js";
+import "./nav.js";
+
+const $ = s => document.querySelector(s);
+const esc = s => (s ?? "").toString().replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let DEFAULTS = null, STATE = {}, OOS = [], DIRTY = false;
+
+async function get(url){ return (await fetch(url)).json(); }
+async function post(url, body){
+  return (await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body||{})})).json();
+}
+function markDirty(){ DIRTY = true; $('#save').disabled = false; }
+function kv(k,v){ return `<div class="kvrow"><span class="k2">${esc(k)}</span><span class="v2">${esc(v)}</span></div>`; }
+function badge(kind,txt){ return `<span class="badge ${kind}">${esc(txt)}</span>`; }
+
+function fillEditor(host, getList, setList){
+  host.textContent = "";
+  const chips = document.createElement("div");
+  chips.className = "chips";
+  const lst = getList();
+  chips.innerHTML = lst.map((k,i) =>
+    `<span class="chip">${esc(k)}<span class="x" title="remove" data-i="${i}">&times;</span></span>`
+  ).join('') || '<span class="muted">none</span>';
+  chips.querySelectorAll(".x").forEach(x => x.addEventListener("click", () => {
+    const l = getList().slice(); l.splice(Number(x.dataset.i), 1);
+    setList(l); markDirty(); fillEditor(host, getList, setList);
+  }));
+  const form = document.createElement("form");
+  form.className = "addkw";
+  form.innerHTML = '<input placeholder="add keyword" autocomplete="off"><button type="submit" class="ghost">+ Add</button>';
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    const inp = form.querySelector("input");
+    const v = inp.value.trim().toLowerCase();
+    if (v){ const l = getList().slice(); if (!l.includes(v)) l.push(v); setList(l); markDirty(); inp.value = ""; }
+    fillEditor(host, getList, setList);
+  });
+  host.append(chips, form);
+}
+
+function renderModel(o){
+  const m = o.model, d = m.described || {}, s = m.sidecar;
+  const ready = s ? s.ready : false;
+  const badgeTxt = s ? ("sidecar " + (s.ready ? "ready" : (s.error ? "error" : "offline"))) : "status unknown";
+  $('#modelPanel').innerHTML =
+    `<div class="eh"><b>Live status</b>${badge(ready ? "live" : "ro", badgeTxt)}</div>`
+    + kv("mode", d.mode || "-")
+    + kv("adapter", d.adapter || "-")
+    + kv("model", d.model || "\u2014")
+    + kv("path", d.path || "\u2014")
+    + kv("reason", d.reason || "\u2014")
+    + kv("sidecar url", s ? (s.url || m.sidecar_url) : m.sidecar_url)
+    + (s && s.error ? kv("sidecar error", s.error) : "");
+}
+
+function renderAllow(o){
+  const P = o.policy;
+  $('#allowlist').innerHTML = Object.entries(P.intent_to_node).map(([intent,node]) => {
+    const rp = P.required_params[intent];
+    const risk = P.action_risk[intent] || "R1";
+    const rc = risk === "R3" ? "r3" : (risk === "R2" ? "r2" : "");
+    return `<div class="row"><div class="top">
+      <span class="k">${esc(intent)}</span>
+      <span class="tag node">&rarr; ${node ? esc(node) : "no node"}</span>
+      ${rp ? rp.map(p=>`<span class="tag">requires ${esc(p)}</span>`).join("") : '<span class="tag">no params</span>'}
+      <span class="tag ${rc}">${esc(risk)}</span>
+    </div></div>`;
+  }).join('');
+}
+
+function renderNodes(o){
+  $('#nodes').innerHTML = o.nodes.map(n => `
+    <div class="row"><div class="top"><span class="k">${esc(n.node)}</span>
+      <span class="tag ${n.health==='ok'?'r2':'r3'}">${esc(n.health)}</span>
+      ${n.action ? `<span class="tag">action: ${esc(n.action)}</span>` : ''}</div>
+      <div class="muted" style="margin-top:4px">${esc(n.description)}</div></div>`).join('');
+}
+
+function renderContracts(o){
+  const C = o.contracts;
+  const block = (title, items) =>
+    `<div class="editor"><div class="eh"><b>${esc(title)}</b></div><div class="chips">`
+    + items.map(i=>`<span class="chip" style="cursor:default">${esc(i)}</span>`).join('')
+    + `</div></div>`;
+  $('#contracts').innerHTML =
+    block("intents", C.intents) + block("nodes", C.nodes) +
+    block("urgency", C.urgency) + block("risk levels", C.risk_levels) + block("statuses", C.statuses);
+}
+
+async function load(){
+  const o = await get('/api/config');
+  DEFAULTS = o.defaults;
+  STATE = {
+    use_model: !!o.model.use_model,
+    model: o.model.model,
+    sidecar_url: o.model.sidecar_url,
+    confidence_floor: o.policy.confidence_floor,
+    urgency_critical: o.policy.urgency_critical.slice(),
+    urgency_high: o.policy.urgency_high.slice(),
+    workers: o.runtime.workers,
+    bus_maxsize: o.runtime.bus_maxsize,
+  };
+  OOS = o.scope.out_of_scope_keywords.slice();
+
+  $('#use_model').checked = STATE.use_model;
+  $('#model').value = STATE.model || "";
+  $('#sidecar_url').value = STATE.sidecar_url;
+  $('#confidence_floor').value = STATE.confidence_floor;
+  $('#workers').value = STATE.workers;
+  $('#bus_maxsize').value = STATE.bus_maxsize;
+  $('#server_port').value = location.port || (location.protocol === 'https:' ? '443' : '80');
+
+  fillEditor($('#ed_critical'), ()=>STATE.urgency_critical, v=>STATE.urgency_critical=v);
+  fillEditor($('#ed_high'),     ()=>STATE.urgency_high,     v=>STATE.urgency_high=v);
+  fillEditor($('#ed_oos'),      ()=>OOS,                     v=>OOS=v);
+
+  renderModel(o); renderAllow(o); renderNodes(o); renderContracts(o);
+
+  DIRTY = false; $('#save').disabled = true;
+  const st = $('#savestate'); st.className = 'save-state';
+  st.textContent = o.updated ? ('last saved ' + o.updated) : 'never saved (using defaults)';
+}
+
+async function saveConfig(){
+  const body = {
+    use_model: STATE.use_model, model: STATE.model, sidecar_url: STATE.sidecar_url,
+    confidence_floor: STATE.confidence_floor, urgency_critical: STATE.urgency_critical,
+    urgency_high: STATE.urgency_high, workers: STATE.workers, bus_maxsize: STATE.bus_maxsize,
+    out_of_scope_keywords: OOS,
+  };
+  const r = await post('/api/config', body);
+  const st = $('#savestate');
+  if (r && r.model){
+    await load();
+    st.className = 'save-state ok';
+    st.textContent = 'saved ' + (r.updated ? 'at ' + r.updated : '') + ' \u2014 live fields applied';
+  } else { st.className = 'save-state err'; st.textContent = 'save failed'; }
+}
+
+async function resetConfig(){
+  if (!confirm('Reset all options to their defaults?')) return;
+  const d = DEFAULTS || {};
+  await post('/api/config', {
+    use_model: d.use_model, model: d.model, sidecar_url: d.sidecar_url,
+    confidence_floor: d.confidence_floor, urgency_critical: d.urgency_critical,
+    urgency_high: d.urgency_high, workers: d.workers, bus_maxsize: d.bus_maxsize,
+    out_of_scope_keywords: d.out_of_scope_keywords,
+  });
+  await load();
+}
+
+$('#use_model').addEventListener('change', e => { STATE.use_model = e.target.checked; markDirty(); });
+$('#model').addEventListener('input', e => { STATE.model = e.target.value || null; markDirty(); });
+$('#sidecar_url').addEventListener('input', e => { STATE.sidecar_url = e.target.value; markDirty(); });
+$('#confidence_floor').addEventListener('input', e => { STATE.confidence_floor = Number(e.target.value); markDirty(); });
+$('#workers').addEventListener('input', e => { STATE.workers = Number(e.target.value); markDirty(); });
+$('#bus_maxsize').addEventListener('input', e => { STATE.bus_maxsize = Number(e.target.value); markDirty(); });
+
+Object.assign(window, { load, saveConfig, resetConfig });
+load();
+</script>
+</body>
+</html>

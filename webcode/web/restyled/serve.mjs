@@ -33,6 +33,9 @@ const ROUTES = {
   "/scope.html": "scope.html",
   "/routes": "routes.html",
   "/routes.html": "routes.html",
+  "/options": "configs.html",
+  "/configs": "configs.html",
+  "/configs.html": "configs.html",
 };
 
 function resolvePath(urlPath) {

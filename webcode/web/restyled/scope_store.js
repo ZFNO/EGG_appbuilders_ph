@@ -7,6 +7,7 @@
 // no code edit. Everything else is surfaced read-only (informational).
 
 import { RiskLevel } from "./schemas.js";
+import * as configStore from "./config_store.js";
 
 // localStorage key equivalent to the Python file <project>/data/scope.json.
 export const SCOPE_KEY = "data/scope.json";
@@ -153,7 +154,7 @@ export async function overview() {
   return {
     out_of_scope_keywords: cfg.out_of_scope_keywords,
     updated: cfg.updated === undefined ? null : cfg.updated,
-    confidence_floor: CONFIDENCE_FLOOR,
+    confidence_floor: configStore.load().confidence_floor,
     in_scope: intents,
     urgency_keywords: URGENCY_KEYWORDS,
     nodes: nodeList,
