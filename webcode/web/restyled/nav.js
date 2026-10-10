@@ -62,8 +62,32 @@ export function renderBrand() {
   el.dataset.done = "1";
 }
 
+// Status pills start collapsed (compact chips); tapping/clicking one expands
+// it to reveal the full text, and tapping again collapses it. Wired here so it
+// works on every page that carries a <span class="pill">.
+export function renderPills(root) {
+  const scope = root || (typeof document !== "undefined" && document);
+  if (!scope) return;
+  for (const pill of scope.querySelectorAll(".pill")) {
+    if (pill.dataset.pillWired) continue;
+    pill.dataset.pillWired = "1";
+    pill.setAttribute("role", "button");
+    pill.setAttribute("tabindex", "0");
+    pill.setAttribute("aria-expanded", "false");
+    if (!pill.title) pill.title = pill.textContent.trim();
+    const toggle = () => {
+      const open = pill.classList.toggle("expanded");
+      pill.setAttribute("aria-expanded", String(open));
+    };
+    pill.addEventListener("click", toggle);
+    pill.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); }
+    });
+  }
+}
+
 if (typeof document !== "undefined") {
-  const boot = () => { renderBrand(); renderNav(); };
+  const boot = () => { renderBrand(); renderNav(); renderPills(); };
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
   } else {
