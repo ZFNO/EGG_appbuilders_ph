@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- chat bubble -->
+    <path
+        android:fillColor="#ffd166"
+        android:pathData="M34,30 h40 a13,13 0 0 1 13,13 v14 a13,13 0 0 1 -13,13 h-22 l-18,14 v-14 a13,13 0 0 1 -13,-13 v-14 a13,13 0 0 1 13,-13 z" />
+    <!-- typing dots -->
+    <path
+        android:fillColor="#0b0f14"
+        android:pathData="M42,50 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <path
+        android:fillColor="#0b0f14"
+        android:pathData="M54,50 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+    <path
+        android:fillColor="#0b0f14"
+        android:pathData="M66,50 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0" />
+</vector>

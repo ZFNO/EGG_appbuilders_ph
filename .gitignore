@@ -89,3 +89,6 @@ data/state.json
 monitor/
 timeline/
 
+
+# ---- generated web bundle (vite build output; regenerate from apk/test/web) ----
+apk/test/app/src/main/assets/assets/
